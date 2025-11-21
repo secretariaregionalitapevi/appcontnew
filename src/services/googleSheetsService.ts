@@ -4,7 +4,8 @@ import { getNaipeByInstrumento } from '../utils/instrumentNaipe';
 import { normalizarRegistroCargoFeminino } from '../utils/normalizeCargoFeminino';
 
 // URL do Google Apps Script (do backupcont/config-deploy.js)
-const GOOGLE_SHEETS_API_URL = 'https://script.google.com/macros/s/AKfycbxPtvi86jPy7y41neTpIPvn3hpycd3cMjbgjgifzLD6qRwrJVPlF9EDulaQp42nma-i/exec';
+const GOOGLE_SHEETS_API_URL =
+  'https://script.google.com/macros/s/AKfycbxPtvi86jPy7y41neTpIPvn3hpycd3cMjbgjgifzLD6qRwrJVPlF9EDulaQp42nma-i/exec';
 const SHEET_NAME = 'Dados';
 
 export interface SheetsResponse {
@@ -13,7 +14,9 @@ export interface SheetsResponse {
 }
 
 export const googleSheetsService = {
-  async sendRegistroToSheet(registro: RegistroPresenca): Promise<{ success: boolean; error?: string }> {
+  async sendRegistroToSheet(
+    registro: RegistroPresenca
+  ): Promise<{ success: boolean; error?: string }> {
     try {
       // Buscar nomes a partir dos IDs
       const [comuns, cargos, instrumentos] = await Promise.all([
@@ -24,7 +27,9 @@ export const googleSheetsService = {
 
       const comum = comuns.find(c => c.id === registro.comum_id);
       const cargoSelecionado = cargos.find(c => c.id === registro.cargo_id);
-      const instrumentoOriginal = registro.instrumento_id ? instrumentos.find(i => i.id === registro.instrumento_id) : null;
+      const instrumentoOriginal = registro.instrumento_id
+        ? instrumentos.find(i => i.id === registro.instrumento_id)
+        : null;
 
       if (!comum || !cargoSelecionado) {
         throw new Error('Dados incompletos: comum ou cargo não encontrados');
@@ -35,7 +40,7 @@ export const googleSheetsService = {
       let nomeCompleto = '';
       let cargoReal = cargoSelecionado.nome;
       let pessoa: any = null;
-      
+
       if (isNomeManual) {
         // Extrair nome do pessoa_id (remove prefixo "manual_")
         nomeCompleto = registro.pessoa_id.replace(/^manual_/, '');
@@ -58,7 +63,7 @@ export const googleSheetsService = {
         cargoReal = pessoa.cargo_real || cargoSelecionado.nome;
         nomeCompleto = pessoa.nome_completo || `${pessoa.nome} ${pessoa.sobrenome}`;
       }
-      
+
       const cargo = { ...cargoSelecionado, nome: cargoReal };
 
       // Normalizar para cargos femininos que tocam órgão (usar cargo real da pessoa)
@@ -69,12 +74,10 @@ export const googleSheetsService = {
       );
 
       // Usar instrumento normalizado se for cargo feminino
-      const instrumento = normalizacao.isNormalizado
-        ? { nome: 'ÓRGÃO' }
-        : instrumentoOriginal;
+      const instrumento = normalizacao.isNormalizado ? { nome: 'ÓRGÃO' } : instrumentoOriginal;
 
       // Buscar cidade da pessoa (se disponível) - só se não for nome manual
-      const cidade = isNomeManual ? '' : (pessoa?.cidade || '');
+      const cidade = isNomeManual ? '' : pessoa?.cidade || '';
 
       // Buscar nome do local de ensaio (se for ID, converter para nome)
       let localEnsaioNome = registro.local_ensaio || '';
@@ -107,10 +110,13 @@ export const googleSheetsService = {
       // Buscar nome do usuário (se for ID, tentar buscar do contexto)
       // Por enquanto, usar o valor direto se não for possível buscar
       let registradoPorNome = registro.usuario_responsavel || '';
-      
+
       // Extrair apenas primeiro e último nome do usuário
       if (registradoPorNome) {
-        const partesNome = registradoPorNome.trim().split(' ').filter(p => p.trim());
+        const partesNome = registradoPorNome
+          .trim()
+          .split(' ')
+          .filter(p => p.trim());
         if (partesNome.length > 1) {
           registradoPorNome = `${partesNome[0]} ${partesNome[partesNome.length - 1]}`;
         } else {
@@ -121,16 +127,18 @@ export const googleSheetsService = {
       // Usar naipe normalizado se for cargo feminino, senão calcular normalmente
       const naipeInstrumento = normalizacao.isNormalizado
         ? normalizacao.naipeInstrumento || 'TECLADO'
-        : (instrumento?.nome ? getNaipeByInstrumento(instrumento.nome) : '');
+        : instrumento?.nome
+          ? getNaipeByInstrumento(instrumento.nome)
+          : '';
 
       // Usar valores normalizados se for cargo feminino
       const instrumentoFinal = normalizacao.isNormalizado
         ? normalizacao.instrumentoNome || 'ÓRGÃO'
-        : (instrumento?.nome || '');
-      
+        : instrumento?.nome || '';
+
       const classeOrganistaFinal = normalizacao.isNormalizado
         ? normalizacao.classeOrganista || 'OFICIALIZADA'
-        : (registro.classe_organista || '');
+        : registro.classe_organista || '';
 
       // Formato esperado pelo Google Apps Script (Code.gs) - tudo em maiúscula
       const sheetRow = {
@@ -203,4 +211,3 @@ export const googleSheetsService = {
     }
   },
 };
-

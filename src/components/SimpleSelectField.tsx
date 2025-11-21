@@ -16,7 +16,7 @@ const { DROPDOWN_FIELD_CONTAINER, DROPDOWN_FIELD_INPUT, DROPDOWN_FIELD_DROPDOWN 
 interface SelectOption {
   id: string;
   label: string;
-  value: any;
+  value: unknown;
 }
 
 interface SimpleSelectFieldProps {
@@ -50,7 +50,11 @@ export const SimpleSelectField: React.FC<SimpleSelectFieldProps> = ({
   // Normalizar texto (remove acentos, converte para minúscula)
   const normalize = (text: string) => {
     if (!text) return '';
-    return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    return text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
   };
 
   // Filtrar opções baseado no texto digitado
@@ -59,12 +63,12 @@ export const SimpleSelectField: React.FC<SimpleSelectFieldProps> = ({
     if (!options || options.length === 0) {
       return [];
     }
-    
+
     if (!searchText.trim()) {
       // Mostrar todas as opções quando vazio (até 50)
       return options.slice(0, 50);
     }
-    
+
     const query = normalize(searchText);
     return options.filter(opt => {
       const labelNorm = normalize(opt.label);
@@ -80,7 +84,7 @@ export const SimpleSelectField: React.FC<SimpleSelectFieldProps> = ({
       }
       return;
     }
-    
+
     const currentOption = options.find(opt => opt.id === value || opt.value === value);
     if (currentOption) {
       setSearchText(currentOption.label);
@@ -131,12 +135,12 @@ export const SimpleSelectField: React.FC<SimpleSelectFieldProps> = ({
       clearTimeout(blurTimeoutRef.current);
       blurTimeoutRef.current = null;
     }
-    
+
     setSearchText(option.label);
     setShowList(false);
     setSelectedIndex(-1);
     onSelect(option);
-    
+
     // Blur do input após seleção
     setTimeout(() => {
       if (inputRef.current) {
@@ -168,34 +172,36 @@ export const SimpleSelectField: React.FC<SimpleSelectFieldProps> = ({
   const maxHeight = Math.min(filtered.length * 48, 300);
 
   // Z-index dinâmico baseado no foco
-  const dynamicZIndex = isFocused || showList 
-    ? DROPDOWN_FIELD_CONTAINER + 1000 
-    : DROPDOWN_FIELD_CONTAINER;
-  const dropdownZIndex = isFocused || showList 
-    ? DROPDOWN_FIELD_DROPDOWN 
-    : DROPDOWN_FIELD_DROPDOWN - 1000;
+  const dynamicZIndex =
+    isFocused || showList ? DROPDOWN_FIELD_CONTAINER + 1000 : DROPDOWN_FIELD_CONTAINER;
+  const dropdownZIndex =
+    isFocused || showList ? DROPDOWN_FIELD_DROPDOWN : DROPDOWN_FIELD_DROPDOWN - 1000;
 
   return (
-    <View 
+    <View
       style={[
-        styles.container, 
+        styles.container,
         style,
-        Platform.OS === 'web' && (isFocused || showList) ? { 
-          zIndex: dynamicZIndex,
-          position: 'relative' as any,
-        } : {}
-      ]} 
-      ref={containerRef} 
+        Platform.OS === 'web' && (isFocused || showList)
+          ? {
+              zIndex: dynamicZIndex,
+              position: 'relative' as any,
+            }
+          : {},
+      ]}
+      ref={containerRef}
       collapsable={false}
     >
       {label && <Text style={styles.label}>{label}</Text>}
-      
-      <View 
+
+      <View
         style={[
           styles.inputContainer,
-          Platform.OS === 'web' && (isFocused || showList) ? { 
-            zIndex: dynamicZIndex,
-          } : {}
+          Platform.OS === 'web' && (isFocused || showList)
+            ? {
+                zIndex: dynamicZIndex,
+              }
+            : {},
         ]}
       >
         <TextInput
@@ -209,51 +215,55 @@ export const SimpleSelectField: React.FC<SimpleSelectFieldProps> = ({
           placeholderTextColor={theme.colors.textSecondary}
           returnKeyType="done"
           onSubmitEditing={handleEnterPress}
-          {...(Platform.OS === 'web' ? {
-            onKeyDown: (e: any) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                handleEnterPress();
-              } else if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                if (filtered.length > 0) {
-                  const nextIndex = selectedIndex < filtered.length - 1 ? selectedIndex + 1 : 0;
-                  setSelectedIndex(nextIndex);
-                  if (flatListRef.current && nextIndex >= 0) {
-                    setTimeout(() => {
-                      flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
-                    }, 50);
+          {...(Platform.OS === 'web'
+            ? {
+                onKeyDown: (e: any) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleEnterPress();
+                  } else if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    if (filtered.length > 0) {
+                      const nextIndex = selectedIndex < filtered.length - 1 ? selectedIndex + 1 : 0;
+                      setSelectedIndex(nextIndex);
+                      if (flatListRef.current && nextIndex >= 0) {
+                        setTimeout(() => {
+                          flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
+                        }, 50);
+                      }
+                    }
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    if (filtered.length > 0) {
+                      const prevIndex = selectedIndex > 0 ? selectedIndex - 1 : filtered.length - 1;
+                      setSelectedIndex(prevIndex);
+                      if (flatListRef.current && prevIndex >= 0) {
+                        setTimeout(() => {
+                          flatListRef.current?.scrollToIndex({ index: prevIndex, animated: true });
+                        }, 50);
+                      }
+                    }
+                  } else if (e.key === 'Escape') {
+                    setShowList(false);
+                    if (inputRef.current) {
+                      inputRef.current.blur();
+                    }
                   }
-                }
-              } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                if (filtered.length > 0) {
-                  const prevIndex = selectedIndex > 0 ? selectedIndex - 1 : filtered.length - 1;
-                  setSelectedIndex(prevIndex);
-                  if (flatListRef.current && prevIndex >= 0) {
-                    setTimeout(() => {
-                      flatListRef.current?.scrollToIndex({ index: prevIndex, animated: true });
-                    }, 50);
-                  }
-                }
-              } else if (e.key === 'Escape') {
-                setShowList(false);
-                if (inputRef.current) {
-                  inputRef.current.blur();
-                }
+                },
               }
-            },
-          } : {})}
+            : {})}
         />
-        
+
         {/* Dropdown inline - SEM Modal */}
         {showList && filtered.length > 0 && (
-          <View 
+          <View
             style={[
               styles.dropdown,
-              Platform.OS === 'web' ? { 
-                zIndex: dropdownZIndex,
-              } : {}
+              Platform.OS === 'web'
+                ? {
+                    zIndex: dropdownZIndex,
+                  }
+                : {},
             ]}
           >
             <FlatList
@@ -269,16 +279,15 @@ export const SimpleSelectField: React.FC<SimpleSelectFieldProps> = ({
                   ]}
                   onPress={() => handleSelect(item)}
                   activeOpacity={0.7}
-                  {...(Platform.OS === 'web' ? {
-                    onMouseEnter: () => setSelectedIndex(index),
-                    onMouseLeave: () => setSelectedIndex(-1),
-                  } : {})}
+                  {...(Platform.OS === 'web'
+                    ? {
+                        onMouseEnter: () => setSelectedIndex(index),
+                        onMouseLeave: () => setSelectedIndex(-1),
+                      }
+                    : {})}
                 >
                   <Text
-                    style={[
-                      styles.itemText,
-                      value === item.id && styles.itemTextSelected,
-                    ]}
+                    style={[styles.itemText, value === item.id && styles.itemTextSelected]}
                     numberOfLines={1}
                   >
                     {item.label}
@@ -312,7 +321,7 @@ export const SimpleSelectField: React.FC<SimpleSelectFieldProps> = ({
           </View>
         )}
       </View>
-      
+
       {error && <Text style={styles.errorText}>{error}</Text>}
     </View>
   );
@@ -321,10 +330,12 @@ export const SimpleSelectField: React.FC<SimpleSelectFieldProps> = ({
 const styles = StyleSheet.create({
   container: {
     marginBottom: theme.spacing.md,
-    ...(Platform.OS === 'web' ? { 
-      position: 'relative' as any,
-      zIndex: DROPDOWN_FIELD_CONTAINER,
-    } : {}),
+    ...(Platform.OS === 'web'
+      ? {
+          position: 'relative' as any,
+          zIndex: DROPDOWN_FIELD_CONTAINER,
+        }
+      : {}),
   },
   label: {
     fontSize: theme.fontSize.sm,
@@ -336,9 +347,11 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     position: 'relative' as any,
-    ...(Platform.OS === 'web' ? { 
-      zIndex: DROPDOWN_FIELD_CONTAINER,
-    } : {}),
+    ...(Platform.OS === 'web'
+      ? {
+          zIndex: DROPDOWN_FIELD_CONTAINER,
+        }
+      : {}),
   },
   input: {
     borderWidth: 1.5,
@@ -355,10 +368,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 2,
-    ...(Platform.OS === 'web' ? { 
-      position: 'relative' as any,
-      zIndex: DROPDOWN_FIELD_INPUT,
-    } : {}),
+    ...(Platform.OS === 'web'
+      ? {
+          position: 'relative' as any,
+          zIndex: DROPDOWN_FIELD_INPUT,
+        }
+      : {}),
   },
   inputError: {
     borderColor: theme.colors.error,
@@ -380,12 +395,14 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 15,
     overflow: 'hidden',
-    ...(Platform.OS === 'web' ? { 
-      zIndex: DROPDOWN_FIELD_DROPDOWN,
-      position: 'absolute' as any,
-    } : {
-      zIndex: 1000,
-    }),
+    ...(Platform.OS === 'web'
+      ? {
+          zIndex: DROPDOWN_FIELD_DROPDOWN,
+          position: 'absolute' as any,
+        }
+      : {
+          zIndex: 1000,
+        }),
   },
   list: {
     maxHeight: 300,

@@ -64,9 +64,7 @@ export const LoginScreen: React.FC = () => {
     setLoading(true);
     try {
       console.log('Tentando fazer login...');
-      const result = isSignUp
-        ? await signUp(email, password)
-        : await signIn(email, password);
+      const result = isSignUp ? await signUp(email, password) : await signIn(email, password);
 
       console.log('Resultado do login:', result);
 
@@ -93,13 +91,17 @@ export const LoginScreen: React.FC = () => {
     const msg = String(message);
 
     if (msg.includes('Invalid login credentials')) return 'Credenciais de login inválidas.';
-    if (msg.includes('Email not confirmed')) return 'E-mail não confirmado. Verifique sua caixa de entrada.';
+    if (msg.includes('Email not confirmed'))
+      return 'E-mail não confirmado. Verifique sua caixa de entrada.';
     if (msg.includes('User not found')) return 'Usuário não encontrado.';
     if (msg.includes('Invalid email or password')) return 'E-mail ou senha inválidos.';
     if (msg.includes('JWT expired')) return 'Sessão expirada. Faça login novamente.';
-    if (msg.includes('rate limit') || msg.includes('Rate limit')) return 'Muitas tentativas. Tente novamente em instantes.';
-    if (msg.includes('Network') || msg.includes('Failed to fetch')) return 'Falha de rede. Verifique sua conexão.';
-    if (msg.includes('FetchError') || msg.includes('timeout')) return 'Tempo de resposta esgotado. Tente novamente.';
+    if (msg.includes('rate limit') || msg.includes('Rate limit'))
+      return 'Muitas tentativas. Tente novamente em instantes.';
+    if (msg.includes('Network') || msg.includes('Failed to fetch'))
+      return 'Falha de rede. Verifique sua conexão.';
+    if (msg.includes('FetchError') || msg.includes('timeout'))
+      return 'Tempo de resposta esgotado. Tente novamente.';
 
     return msg;
   };
@@ -116,10 +118,7 @@ export const LoginScreen: React.FC = () => {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-      >
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <View style={styles.loginWrap}>
           {/* Logo CCB */}
           <View style={styles.logoContainer}>
@@ -127,7 +126,7 @@ export const LoginScreen: React.FC = () => {
               onPress={() => Linking.openURL('https://congregacaocristanobrasil.org.br/')}
               activeOpacity={0.7}
             >
-              <Image 
+              <Image
                 source={require('../img/logo-ccb-light.png')}
                 style={styles.logo}
                 resizeMode="contain"
@@ -137,14 +136,15 @@ export const LoginScreen: React.FC = () => {
 
           {/* Título */}
           <Text style={styles.title}>Bem-vindos ao SAC</Text>
-          
+
           {/* Subtítulo */}
           <Text style={styles.leadText}>
-            Sistema Administrativo de Contagem, criado para facilitar a administração Musical da Congregação Cristã no Brasil
+            Sistema Administrativo de Contagem, criado para facilitar a administração Musical da
+            Congregação Cristã no Brasil
             {'\n'}
             <Text style={styles.boldText}>Regional Itapevi</Text>.
           </Text>
-          
+
           <Text style={styles.subText}>Faça o login para acessar o Sistema</Text>
 
           {/* Formulário */}

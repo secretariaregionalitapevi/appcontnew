@@ -27,7 +27,7 @@ export const useAuth = () => {
     try {
       const currentUser = await authService.getCurrentUser();
       setUser(currentUser);
-      
+
       // Se não houver usuário autenticado, garantir que está null
       if (!currentUser) {
         setUser(null);
@@ -77,4 +77,3 @@ export const useAuth = () => {
     isAuthenticated: !!user,
   };
 };
-

@@ -5,8 +5,15 @@ import { Usuario } from '../types/models';
 interface AuthContextType {
   user: Usuario | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ user: Usuario | null; error: Error | null }>;
-  signUp: (email: string, password: string, nome?: string) => Promise<{ user: Usuario | null; error: Error | null }>;
+  signIn: (
+    email: string,
+    password: string
+  ) => Promise<{ user: Usuario | null; error: Error | null }>;
+  signUp: (
+    email: string,
+    password: string,
+    nome?: string
+  ) => Promise<{ user: Usuario | null; error: Error | null }>;
   signOut: () => Promise<void>;
   isAuthenticated: boolean;
 }
@@ -26,4 +33,3 @@ export const useAuthContext = () => {
   }
   return context;
 };
-

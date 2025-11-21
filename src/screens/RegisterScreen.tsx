@@ -63,7 +63,6 @@ export const RegisterScreen: React.FC = () => {
   const cargoNome = selectedCargoObj?.nome || '';
   const isOrganista = cargoNome === 'Organista';
   const showInstrumento = !isOrganista && selectedCargoObj?.is_musical;
-  
 
   useEffect(() => {
     loadInitialData();
@@ -81,7 +80,7 @@ export const RegisterScreen: React.FC = () => {
     const selectedCargoObj = cargos.find(c => c.id === selectedCargo);
     const cargoNome = selectedCargoObj?.nome || '';
     const precisaInstrumento = cargoNome === 'Músico'; // Organista removido
-    
+
     // Só carregar pessoas se tiver comum + cargo + (instrumento se necessário)
     if (selectedComum && selectedCargo) {
       if (precisaInstrumento && !selectedInstrumento) {
@@ -101,7 +100,7 @@ export const RegisterScreen: React.FC = () => {
   const loadInitialData = async () => {
     try {
       setInitialLoading(true);
-      
+
       // Se está online, sempre tentar sincronizar primeiro
       if (isOnline) {
         console.log('🔄 Sincronizando dados do Supabase...');
@@ -111,7 +110,7 @@ export const RegisterScreen: React.FC = () => {
           console.warn('⚠️ Erro na sincronização:', syncError);
         }
       }
-      
+
       // Carregar do banco local/cache
       let [comunsData, cargosData, instrumentosData] = await Promise.all([
         supabaseDataService.getComunsFromLocal(),
@@ -163,7 +162,7 @@ export const RegisterScreen: React.FC = () => {
 
   const syncData = async () => {
     if (syncing || !isOnline) return; // Não sincronizar se já está sincronizando ou está offline
-    
+
     try {
       setSyncing(true);
       const result = await offlineSyncService.syncAllData();
@@ -176,7 +175,10 @@ export const RegisterScreen: React.FC = () => {
     } catch (error) {
       // Não logar erros de rede como erros críticos
       const errorMessage = error instanceof Error ? error.message : String(error);
-      if (!errorMessage.toLowerCase().includes('fetch') && !errorMessage.toLowerCase().includes('network')) {
+      if (
+        !errorMessage.toLowerCase().includes('fetch') &&
+        !errorMessage.toLowerCase().includes('network')
+      ) {
         console.error('❌ Erro ao sincronizar:', error);
       }
     } finally {
@@ -186,19 +188,19 @@ export const RegisterScreen: React.FC = () => {
 
   const loadPessoas = async () => {
     try {
-      console.log('📚 Carregando pessoas:', { 
-        selectedComum, 
-        selectedCargo, 
+      console.log('📚 Carregando pessoas:', {
+        selectedComum,
+        selectedCargo,
         selectedInstrumento,
-        showInstrumento 
+        showInstrumento,
       });
-      
+
       const pessoasData = await supabaseDataService.getPessoasFromLocal(
         selectedComum,
         selectedCargo,
         showInstrumento ? selectedInstrumento : undefined
       );
-      
+
       console.log(`✅ ${pessoasData.length} pessoas carregadas`);
       setPessoas(pessoasData);
     } catch (error) {
@@ -231,10 +233,10 @@ export const RegisterScreen: React.FC = () => {
 
     // Preparar registro antes do try para estar disponível no catch
     const localEnsaio = await localStorageService.getLocalEnsaio();
-    
+
     // Usar nome do usuário ao invés do ID
     const nomeUsuario = user.nome || user.email || user.id;
-    
+
     // Buscar classe da organista do banco de dados se for Organista
     // Se nome é manual, não buscar classe (cadastro desatualizado)
     let classeOrganistaDB: string | undefined = undefined;
@@ -277,10 +279,7 @@ export const RegisterScreen: React.FC = () => {
           }, 500);
         }
 
-        showToast.success(
-          'Registro enviado!',
-          result.error || 'Registro enviado com sucesso!'
-        );
+        showToast.success('Registro enviado!', result.error || 'Registro enviado com sucesso!');
         // Limpar formulário
         setSelectedComum('');
         setSelectedCargo('');
@@ -289,12 +288,17 @@ export const RegisterScreen: React.FC = () => {
         setIsNomeManual(false);
       } else {
         // Verificar se é erro de duplicata
-        if (result.error && (result.error.includes('DUPLICATA:') || result.error.includes('já foi cadastrado hoje') || result.error.includes('DUPLICATA_BLOQUEADA'))) {
+        if (
+          result.error &&
+          (result.error.includes('DUPLICATA:') ||
+            result.error.includes('já foi cadastrado hoje') ||
+            result.error.includes('DUPLICATA_BLOQUEADA'))
+        ) {
           let nome = '';
           let comumNome = '';
           let dataFormatada = '';
           let horarioFormatado = '';
-          
+
           // Tentar extrair informações do formato DUPLICATA:nome|comum|data|horario
           if (result.error.includes('DUPLICATA:')) {
             const parts = result.error.split('DUPLICATA:')[1]?.split('|');
@@ -305,30 +309,36 @@ export const RegisterScreen: React.FC = () => {
               horarioFormatado = parts[3];
             }
           }
-          
+
           // Se não conseguiu extrair, usar fallback
           if (!nome || !comumNome) {
             const errorMsg = result.error;
             const nomeMatch = errorMsg.match(/^([^d]+) de/);
             const comumMatch = errorMsg.match(/de ([^j]+) já/);
-            
-            nome = nomeMatch ? nomeMatch[1].trim() : (isNomeManual ? selectedPessoa : pessoas.find(p => p.id === selectedPessoa)?.nome_completo || '');
-            comumNome = comumMatch ? comumMatch[1].trim() : comuns.find(c => c.id === selectedComum)?.nome || '';
-            
+
+            nome = nomeMatch
+              ? nomeMatch[1].trim()
+              : isNomeManual
+                ? selectedPessoa
+                : pessoas.find(p => p.id === selectedPessoa)?.nome_completo || '';
+            comumNome = comumMatch
+              ? comumMatch[1].trim()
+              : comuns.find(c => c.id === selectedComum)?.nome || '';
+
             // Formatar data e horário atual como fallback
             const agora = new Date();
-            dataFormatada = agora.toLocaleDateString('pt-BR', { 
-              day: '2-digit', 
-              month: '2-digit', 
-              year: 'numeric' 
+            dataFormatada = agora.toLocaleDateString('pt-BR', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
             });
-            horarioFormatado = agora.toLocaleTimeString('pt-BR', { 
-              hour: '2-digit', 
+            horarioFormatado = agora.toLocaleTimeString('pt-BR', {
+              hour: '2-digit',
               minute: '2-digit',
-              hour12: false
+              hour12: false,
             });
           }
-          
+
           // Mostrar alerta simples
           Alert.alert(
             'Cadastro Duplicado!',
@@ -352,14 +362,20 @@ export const RegisterScreen: React.FC = () => {
                           syncData();
                         }, 500);
                       }
-                      showToast.success('Registro enviado!', 'Registro duplicado cadastrado com sucesso!');
+                      showToast.success(
+                        'Registro enviado!',
+                        'Registro duplicado cadastrado com sucesso!'
+                      );
                       setSelectedComum('');
                       setSelectedCargo('');
                       setSelectedInstrumento('');
                       setSelectedPessoa('');
                       setIsNomeManual(false);
                     } else {
-                      showToast.error('Erro', resultForce.error || 'Erro ao cadastrar registro duplicado');
+                      showToast.error(
+                        'Erro',
+                        resultForce.error || 'Erro ao cadastrar registro duplicado'
+                      );
                     }
                   } catch (error) {
                     Alert.alert('Erro', 'Ocorreu um erro ao processar o registro duplicado');
@@ -461,64 +477,63 @@ export const RegisterScreen: React.FC = () => {
             </View>
             <View style={styles.cardBody}>
               <AutocompleteField
-            label="COMUM CONGREGAÇÃO *"
-            value={selectedComum}
-            options={comunsOptions}
-            onSelect={option => {
-              setSelectedComum(option.value);
-              setSelectedPessoa('');
-              setIsNomeManual(false);
-            }}
-            placeholder="Digite para buscar..."
-          />
+                label="COMUM CONGREGAÇÃO *"
+                value={selectedComum}
+                options={comunsOptions}
+                onSelect={option => {
+                  setSelectedComum(option.value);
+                  setSelectedPessoa('');
+                  setIsNomeManual(false);
+                }}
+                placeholder="Digite para buscar..."
+              />
 
-          <SimpleSelectField
-            label="CARGO/MINISTÉRIO *"
-            value={selectedCargo}
-            options={cargosOptions}
-            onSelect={option => {
-              setSelectedCargo(option.value);
-              setSelectedInstrumento('');
-              setSelectedPessoa('');
-              setIsNomeManual(false);
-            }}
-            placeholder="Digite para buscar..."
-          />
+              <SimpleSelectField
+                label="CARGO/MINISTÉRIO *"
+                value={selectedCargo}
+                options={cargosOptions}
+                onSelect={option => {
+                  setSelectedCargo(option.value);
+                  setSelectedInstrumento('');
+                  setSelectedPessoa('');
+                  setIsNomeManual(false);
+                }}
+                placeholder="Digite para buscar..."
+              />
 
-                  {showInstrumento && (
-                    <SimpleSelectField
-                      label="Instrumento (apenas para cargos musicais)"
-                      value={selectedInstrumento}
-                      options={instrumentosOptions}
-                      onSelect={(option: any) => {
-                        setSelectedInstrumento(option.value);
-                        setSelectedPessoa('');
-                        setIsNomeManual(false);
-                      }}
-                      placeholder="Selecione o instrumento"
-                    />
-                  )}
+              {showInstrumento && (
+                <SimpleSelectField
+                  label="Instrumento (apenas para cargos musicais)"
+                  value={selectedInstrumento}
+                  options={instrumentosOptions}
+                  onSelect={(option: any) => {
+                    setSelectedInstrumento(option.value);
+                    setSelectedPessoa('');
+                    setIsNomeManual(false);
+                  }}
+                  placeholder="Selecione o instrumento"
+                />
+              )}
 
+              <NameSelectField
+                label="Nome e Sobrenome *"
+                value={selectedPessoa}
+                options={pessoasOptions}
+                onSelect={(option: any) => {
+                  if (option.id === 'manual') {
+                    setSelectedPessoa(option.value);
+                    setIsNomeManual(true);
+                  } else {
+                    setSelectedPessoa(option.value);
+                    setIsNomeManual(false);
+                  }
+                }}
+                placeholder="Digite para buscar..."
+              />
 
-          <NameSelectField
-            label="Nome e Sobrenome *"
-            value={selectedPessoa}
-            options={pessoasOptions}
-            onSelect={(option: any) => {
-              if (option.id === 'manual') {
-                setSelectedPessoa(option.value);
-                setIsNomeManual(true);
-              } else {
-                setSelectedPessoa(option.value);
-                setIsNomeManual(false);
-              }
-            }}
-            placeholder="Digite para buscar..."
-          />
-
-          <Text style={styles.hint}>
-            Selecione um nome da lista após preencher Comum e Cargo.
-          </Text>
+              <Text style={styles.hint}>
+                Selecione um nome da lista após preencher Comum e Cargo.
+              </Text>
 
               <PrimaryButton
                 title="ENVIAR REGISTRO"
@@ -529,12 +544,11 @@ export const RegisterScreen: React.FC = () => {
             </View>
           </View>
 
-        <View style={styles.footer}>
-          <OfflineBadge count={pendingCount} syncing={syncing} />
+          <View style={styles.footer}>
+            <OfflineBadge count={pendingCount} syncing={syncing} />
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-
     </View>
   );
 };
@@ -619,4 +633,3 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
   },
 });
-

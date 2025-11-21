@@ -7,6 +7,7 @@ import {
   FlatList,
   Modal,
   Platform,
+  ViewStyle,
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { theme } from '../theme';
@@ -14,7 +15,7 @@ import { theme } from '../theme';
 interface DropdownOption {
   id: string;
   label: string;
-  value: any;
+  value: unknown;
   icon?: string; // Nome do ícone FontAwesome (opcional)
 }
 
@@ -23,7 +24,7 @@ interface DropdownFieldProps {
   options: DropdownOption[];
   onSelect: (option: DropdownOption) => void;
   placeholder?: string;
-  style?: any;
+  style?: ViewStyle;
   icon?: string; // Ícone padrão para todos os itens
   iconColor?: string; // Cor do ícone
 }
@@ -81,16 +82,18 @@ export const DropdownField: React.FC<DropdownFieldProps> = ({
         style={[styles.selectButton, isOpen && styles.selectButtonOpen]}
         onPress={handleOpen}
         activeOpacity={0.7}
-        {...(Platform.OS === 'web' ? {
-          onMouseEnter: (e: any) => {
-            if (!isOpen) {
-              e.currentTarget.style.cursor = 'pointer';
+        {...(Platform.OS === 'web'
+          ? {
+              onMouseEnter: (e: React.MouseEvent<HTMLDivElement>) => {
+                if (!isOpen) {
+                  (e.currentTarget as HTMLElement).style.cursor = 'pointer';
+                }
+              },
+              onMouseLeave: (e: React.MouseEvent<HTMLDivElement>) => {
+                (e.currentTarget as HTMLElement).style.cursor = 'default';
+              },
             }
-          },
-          onMouseLeave: (e: any) => {
-            e.currentTarget.style.cursor = 'default';
-          },
-        } : {})}
+          : {})}
       >
         {selectedOption && (
           <FontAwesome5
@@ -101,10 +104,7 @@ export const DropdownField: React.FC<DropdownFieldProps> = ({
           />
         )}
         <Text
-          style={[
-            styles.selectText,
-            !selectedOption && styles.placeholderText,
-          ]}
+          style={[styles.selectText, !selectedOption && styles.placeholderText]}
           numberOfLines={1}
         >
           {selectedOption ? selectedOption.label : placeholder}
@@ -153,24 +153,30 @@ export const DropdownField: React.FC<DropdownFieldProps> = ({
                   ]}
                   onPress={() => handleSelect(item)}
                   activeOpacity={0.6}
-                  {...(Platform.OS === 'web' ? {
-                    onMouseEnter: (e: any) => {
-                      e.currentTarget.style.backgroundColor = theme.colors.primary + '15';
-                      e.currentTarget.style.cursor = 'pointer';
-                    },
-                    onMouseLeave: (e: any) => {
-                      e.currentTarget.style.backgroundColor = selectedOption?.id === item.id 
-                        ? theme.colors.primary + '08' 
-                        : theme.colors.surface;
-                      e.currentTarget.style.cursor = 'default';
-                    },
-                    onMouseDown: (e: any) => {
-                      e.currentTarget.style.backgroundColor = theme.colors.primary + '25';
-                    },
-                    onMouseUp: (e: any) => {
-                      e.currentTarget.style.backgroundColor = theme.colors.primary + '15';
-                    },
-                  } : {})}
+                  {...(Platform.OS === 'web'
+                    ? {
+                        onMouseEnter: (e: React.MouseEvent<HTMLDivElement>) => {
+                          (e.currentTarget as HTMLElement).style.backgroundColor =
+                            theme.colors.primary + '15';
+                          (e.currentTarget as HTMLElement).style.cursor = 'pointer';
+                        },
+                        onMouseLeave: (e: React.MouseEvent<HTMLDivElement>) => {
+                          (e.currentTarget as HTMLElement).style.backgroundColor =
+                            selectedOption?.id === item.id
+                              ? theme.colors.primary + '08'
+                              : theme.colors.surface;
+                          (e.currentTarget as HTMLElement).style.cursor = 'default';
+                        },
+                        onMouseDown: (e: React.MouseEvent<HTMLDivElement>) => {
+                          (e.currentTarget as HTMLElement).style.backgroundColor =
+                            theme.colors.primary + '25';
+                        },
+                        onMouseUp: (e: React.MouseEvent<HTMLDivElement>) => {
+                          (e.currentTarget as HTMLElement).style.backgroundColor =
+                            theme.colors.primary + '15';
+                        },
+                      }
+                    : {})}
                 >
                   <FontAwesome5
                     name={item.icon || icon}

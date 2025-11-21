@@ -7,26 +7,27 @@ import {
   TouchableOpacity,
   StyleSheet,
   Platform,
+  ViewStyle,
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { theme } from '../theme';
 
-const { DROPDOWN_FIELD_CONTAINER, DROPDOWN_FIELD_INPUT, DROPDOWN_FIELD_DROPDOWN } = theme.zIndex;
+const { DROPDOWN_FIELD_CONTAINER, DROPDOWN_FIELD_DROPDOWN } = theme.zIndex;
 
 interface SelectOption {
   id: string;
   label: string;
-  value: any;
+  value: unknown;
 }
 
 interface NameSelectFieldProps {
   label?: string;
   value?: string;
   options: SelectOption[];
-  onSelect: (option: SelectOption | { id: 'manual', label: string, value: string }) => void;
+  onSelect: (option: SelectOption | { id: 'manual'; label: string; value: string }) => void;
   placeholder?: string;
   error?: string;
-  style?: any;
+  style?: ViewStyle;
 }
 
 const MANUAL_INPUT_OPTION_ID = '__MANUAL_INPUT__';
@@ -54,7 +55,11 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
   // Normalizar texto (remove acentos, converte para minúscula)
   const normalize = (text: string) => {
     if (!text) return '';
-    return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    return text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
   };
 
   // REMOVIDO: Conversão automática para modo manual
@@ -81,19 +86,19 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
     if (!options || options.length === 0) {
       return optionsWithManual.slice(-1); // Retornar apenas a opção manual
     }
-    
+
     // Se não há texto digitado, mostrar todas as opções + opção manual
     if (!searchText.trim()) {
       return optionsWithManual;
     }
-    
+
     // Filtrar opções baseado no texto
     const query = normalize(searchText);
     const filteredOptions = options.filter(opt => {
       const labelNorm = normalize(opt.label);
       return labelNorm.includes(query);
     });
-    
+
     // Sempre adicionar opção manual no final, mesmo quando filtra
     return [...filteredOptions, optionsWithManual[optionsWithManual.length - 1]];
   }, [searchText, options, optionsWithManual, isManualMode]);
@@ -116,7 +121,7 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
       }
       return;
     }
-    
+
     // Buscar opção correspondente ao value
     const currentOption = options.find(opt => opt.id === value || opt.value === value);
     if (currentOption) {
@@ -134,7 +139,7 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
   const handleChange = (text: string) => {
     setSearchText(text);
     setSelectedIndex(-1);
-    
+
     if (isManualMode) {
       // Em modo manual, atualizar diretamente
       onSelect({ id: 'manual', label: text, value: text });
@@ -157,12 +162,12 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
       clearTimeout(blurTimeoutRef.current);
       blurTimeoutRef.current = null;
     }
-    
+
     if (isManualMode) {
       // Em modo manual, não mostrar lista
       return;
     }
-    
+
     // Mostrar lista se há opções disponíveis
     if (options.length > 0) {
       setShowList(true);
@@ -186,7 +191,7 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
       clearTimeout(blurTimeoutRef.current);
       blurTimeoutRef.current = null;
     }
-    
+
     // Se selecionou opção manual, ativar modo manual
     if (option.id === MANUAL_INPUT_OPTION_ID || option.value === MANUAL_INPUT_OPTION_ID) {
       setIsManualMode(true);
@@ -202,13 +207,13 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
       }, 100);
       return;
     }
-    
+
     // Seleção normal da lista
     setSearchText(option.label);
     setShowList(false);
     setSelectedIndex(-1);
     onSelect(option);
-    
+
     // Blur do input após seleção
     setTimeout(() => {
       if (inputRef.current) {
@@ -245,37 +250,37 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
     };
   }, []);
 
-  const maxHeight = Math.min(filtered.length * 48, 300);
-
   // Z-index dinâmico baseado no foco
-  const dynamicZIndex = isFocused || showList 
-    ? DROPDOWN_FIELD_CONTAINER + 1000 
-    : DROPDOWN_FIELD_CONTAINER;
-  const dropdownZIndex = isFocused || showList 
-    ? DROPDOWN_FIELD_DROPDOWN 
-    : DROPDOWN_FIELD_DROPDOWN - 1000;
+  const dynamicZIndex =
+    isFocused || showList ? DROPDOWN_FIELD_CONTAINER + 1000 : DROPDOWN_FIELD_CONTAINER;
+  const dropdownZIndex =
+    isFocused || showList ? DROPDOWN_FIELD_DROPDOWN : DROPDOWN_FIELD_DROPDOWN - 1000;
 
   return (
-    <View 
+    <View
       style={[
-        styles.container, 
+        styles.container,
         style,
-        Platform.OS === 'web' && (isFocused || showList) ? { 
-          zIndex: dynamicZIndex,
-          position: 'relative' as any,
-        } : {}
-      ]} 
-      ref={containerRef} 
+        Platform.OS === 'web' && (isFocused || showList)
+          ? {
+              zIndex: dynamicZIndex,
+              position: 'relative' as ViewStyle['position'],
+            }
+          : {},
+      ]}
+      ref={containerRef}
       collapsable={false}
     >
       {label && <Text style={styles.label}>{label}</Text>}
-      
-      <View 
+
+      <View
         style={[
           styles.inputContainer,
-          Platform.OS === 'web' && (isFocused || showList) ? { 
-            zIndex: dynamicZIndex,
-          } : {}
+          Platform.OS === 'web' && (isFocused || showList)
+            ? {
+                zIndex: dynamicZIndex,
+              }
+            : {},
         ]}
       >
         {isManualMode ? (
@@ -323,51 +328,63 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
               placeholderTextColor={theme.colors.textSecondary}
               returnKeyType="done"
               onSubmitEditing={handleEnterPress}
-              {...(Platform.OS === 'web' ? {
-                onKeyDown: (e: any) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleEnterPress();
-                  } else if (e.key === 'ArrowDown') {
-                    e.preventDefault();
-                    if (filtered.length > 0) {
-                      const nextIndex = selectedIndex < filtered.length - 1 ? selectedIndex + 1 : 0;
-                      setSelectedIndex(nextIndex);
-                      if (flatListRef.current && nextIndex >= 0) {
-                        setTimeout(() => {
-                          flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
-                        }, 50);
+              {...(Platform.OS === 'web'
+                ? {
+                    onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleEnterPress();
+                      } else if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        if (filtered.length > 0) {
+                          const nextIndex =
+                            selectedIndex < filtered.length - 1 ? selectedIndex + 1 : 0;
+                          setSelectedIndex(nextIndex);
+                          if (flatListRef.current && nextIndex >= 0) {
+                            setTimeout(() => {
+                              flatListRef.current?.scrollToIndex({
+                                index: nextIndex,
+                                animated: true,
+                              });
+                            }, 50);
+                          }
+                        }
+                      } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        if (filtered.length > 0) {
+                          const prevIndex =
+                            selectedIndex > 0 ? selectedIndex - 1 : filtered.length - 1;
+                          setSelectedIndex(prevIndex);
+                          if (flatListRef.current && prevIndex >= 0) {
+                            setTimeout(() => {
+                              flatListRef.current?.scrollToIndex({
+                                index: prevIndex,
+                                animated: true,
+                              });
+                            }, 50);
+                          }
+                        }
+                      } else if (e.key === 'Escape') {
+                        setShowList(false);
+                        if (inputRef.current) {
+                          inputRef.current.blur();
+                        }
                       }
-                    }
-                  } else if (e.key === 'ArrowUp') {
-                    e.preventDefault();
-                    if (filtered.length > 0) {
-                      const prevIndex = selectedIndex > 0 ? selectedIndex - 1 : filtered.length - 1;
-                      setSelectedIndex(prevIndex);
-                      if (flatListRef.current && prevIndex >= 0) {
-                        setTimeout(() => {
-                          flatListRef.current?.scrollToIndex({ index: prevIndex, animated: true });
-                        }, 50);
-                      }
-                    }
-                  } else if (e.key === 'Escape') {
-                    setShowList(false);
-                    if (inputRef.current) {
-                      inputRef.current.blur();
-                    }
+                    },
                   }
-                },
-              } : {})}
+                : {})}
             />
-            
+
             {/* Dropdown inline - SEM Modal */}
             {showList && filtered.length > 0 && (
-              <View 
+              <View
                 style={[
                   styles.dropdown,
-                  Platform.OS === 'web' ? { 
-                    zIndex: dropdownZIndex,
-                  } : {}
+                  Platform.OS === 'web'
+                    ? {
+                        zIndex: dropdownZIndex,
+                      }
+                    : {},
                 ]}
               >
                 <FlatList
@@ -386,10 +403,12 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
                         ]}
                         onPress={() => handleSelect(item)}
                         activeOpacity={0.7}
-                        {...(Platform.OS === 'web' ? {
-                          onMouseEnter: () => setSelectedIndex(index),
-                          onMouseLeave: () => setSelectedIndex(-1),
-                        } : {})}
+                        {...(Platform.OS === 'web'
+                          ? {
+                              onMouseEnter: () => setSelectedIndex(index),
+                              onMouseLeave: () => setSelectedIndex(-1),
+                            }
+                          : {})}
                       >
                         <Text
                           style={[
@@ -433,7 +452,7 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
           </>
         )}
       </View>
-      
+
       {error && <Text style={styles.errorText}>{error}</Text>}
     </View>
   );
@@ -442,10 +461,12 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
 const styles = StyleSheet.create({
   container: {
     marginBottom: theme.spacing.md,
-    ...(Platform.OS === 'web' ? { 
-      position: 'relative' as any,
-      zIndex: 1000,
-    } : {}),
+    ...(Platform.OS === 'web'
+      ? {
+          position: 'relative' as ViewStyle['position'],
+          zIndex: 1000,
+        }
+      : {}),
   },
   label: {
     fontSize: theme.fontSize.sm,
@@ -456,10 +477,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   inputContainer: {
-    position: 'relative' as any,
-    ...(Platform.OS === 'web' ? { 
-      zIndex: 1000,
-    } : {}),
+    position: 'relative' as ViewStyle['position'],
+    ...(Platform.OS === 'web'
+      ? {
+          zIndex: 1000,
+        }
+      : {}),
   },
   input: {
     borderWidth: 1.5,
@@ -476,10 +499,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 2,
-    ...(Platform.OS === 'web' ? { 
-      position: 'relative' as any,
-      zIndex: 1001,
-    } : {}),
+    ...(Platform.OS === 'web'
+      ? {
+          position: 'relative' as ViewStyle['position'],
+          zIndex: 1001,
+        }
+      : {}),
   },
   manualInput: {
     backgroundColor: '#e8f5e8',
@@ -511,7 +536,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   dropdown: {
-    position: 'absolute' as any,
+    position: 'absolute' as ViewStyle['position'],
     top: '100%',
     left: 0,
     right: 0,
@@ -527,12 +552,14 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 15,
     overflow: 'hidden',
-    ...(Platform.OS === 'web' ? { 
-      zIndex: 999999999,
-      position: 'absolute' as any,
-    } : {
-      zIndex: 1000,
-    }),
+    ...(Platform.OS === 'web'
+      ? {
+          zIndex: 999999999,
+          position: 'absolute' as ViewStyle['position'],
+        }
+      : {
+          zIndex: 1000,
+        }),
   },
   list: {
     maxHeight: 300,
@@ -595,4 +622,3 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
 });
-

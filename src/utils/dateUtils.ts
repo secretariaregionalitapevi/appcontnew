@@ -12,4 +12,3 @@ export const formatDateTime = (date: Date | string): string => {
 export const getCurrentDateTimeISO = (): string => {
   return new Date().toISOString();
 };
-

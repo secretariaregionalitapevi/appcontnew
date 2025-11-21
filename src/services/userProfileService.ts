@@ -15,18 +15,25 @@ export const userProfileService = {
   /**
    * Criar ou atualizar perfil do usuário na tabela profiles
    */
-  async createOrUpdateProfile(userId: string, email: string, nome?: string, role?: string): Promise<{ profile: UserProfile | null; error: Error | null }> {
+  async createOrUpdateProfile(
+    userId: string,
+    email: string,
+    nome?: string,
+    role?: string
+  ): Promise<{ profile: UserProfile | null; error: Error | null }> {
     if (!isSupabaseConfigured() || !supabase) {
       return {
         profile: null,
-        error: new Error('Supabase não está configurado. Configure as variáveis de ambiente SUPABASE_URL e SUPABASE_ANON_KEY.'),
+        error: new Error(
+          'Supabase não está configurado. Configure as variáveis de ambiente SUPABASE_URL e SUPABASE_ANON_KEY.'
+        ),
       };
     }
 
     try {
       // Tentar atualizar com 'nome' primeiro, se falhar tenta com 'name'
       let data, error;
-      
+
       try {
         const result = await supabase
           .from('profiles')
@@ -83,7 +90,9 @@ export const userProfileService = {
     if (!isSupabaseConfigured() || !supabase) {
       return {
         profile: null,
-        error: new Error('Supabase não está configurado. Configure as variáveis de ambiente SUPABASE_URL e SUPABASE_ANON_KEY.'),
+        error: new Error(
+          'Supabase não está configurado. Configure as variáveis de ambiente SUPABASE_URL e SUPABASE_ANON_KEY.'
+        ),
       };
     }
 
@@ -91,7 +100,7 @@ export const userProfileService = {
       // Buscar apenas campos que existem (nome, não name)
       // Tentar primeiro com 'nome', se falhar tenta sem especificar campos
       let data, error;
-      
+
       try {
         // Primeira tentativa: buscar com 'nome' (campo correto)
         const result = await supabase
@@ -103,11 +112,7 @@ export const userProfileService = {
         error = result.error;
       } catch (e) {
         // Se falhar, tentar buscar todos os campos disponíveis
-        const result = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .single();
+        const result = await supabase.from('profiles').select('*').eq('id', userId).single();
         data = result.data;
         error = result.error;
       }
@@ -147,7 +152,7 @@ export const userProfileService = {
 
     // Priorizar 'nome', depois 'name', depois undefined
     const nome = profile.nome || profile.name || undefined;
-    
+
     // Normalizar role: converter para lowercase e garantir que seja string
     let role = profile.role;
     if (role) {
@@ -155,7 +160,7 @@ export const userProfileService = {
     } else {
       role = 'user';
     }
-    
+
     console.log('🔄 Convertendo perfil para Usuario:', {
       id: profile.id,
       email: profile.email,
@@ -173,4 +178,3 @@ export const userProfileService = {
     };
   },
 };
-

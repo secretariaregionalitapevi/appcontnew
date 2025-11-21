@@ -11,20 +11,20 @@ export function uuidv4(): string {
         return uuid;
       }
     }
-    
+
     // MÉTODO 2: crypto.getRandomValues (fallback para navegadores mais antigos)
     if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
       const bytes = new Uint8Array(16);
       crypto.getRandomValues(bytes);
-      
+
       // Versão 4 UUID: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
       bytes[6] = (bytes[6] & 0x0f) | 0x40; // Version 4
       bytes[8] = (bytes[8] & 0x3f) | 0x80; // Variant 10
-      
+
       const hex = Array.from(bytes)
         .map(b => b.toString(16).padStart(2, '0'))
         .join('');
-      
+
       const uuid = [
         hex.slice(0, 8),
         hex.slice(8, 12),
@@ -32,14 +32,14 @@ export function uuidv4(): string {
         hex.slice(16, 20),
         hex.slice(20, 32),
       ].join('-');
-      
+
       if (isValidUUID(uuid)) {
         return uuid;
       }
     }
-    
+
     // MÉTODO 3: Fallback usando Math.random (menos seguro, mas funciona)
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
       const r = (Math.random() * 16) | 0;
       const v = c === 'x' ? r : (r & 0x3) | 0x8;
       return v.toString(16);
@@ -58,4 +58,3 @@ export function isValidUUID(uuid: string): boolean {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   return uuidRegex.test(uuid);
 }
-

@@ -35,5 +35,6 @@ fs.writeFileSync(path.join(assetsDir, 'favicon.svg'), faviconSvg);
 fs.writeFileSync(path.join(assetsDir, 'adaptive-icon.svg'), iconSvg);
 
 console.log('Assets SVG criados!');
-console.log('Nota: Para produção, converta os SVGs para PNG usando uma ferramenta como ImageMagick ou online converter.');
-
+console.log(
+  'Nota: Para produção, converta os SVGs para PNG usando uma ferramenta como ImageMagick ou online converter.'
+);

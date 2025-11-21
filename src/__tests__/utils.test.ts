@@ -1,5 +1,3 @@
-import { supabaseDataService } from '../services/supabaseDataService';
-
 describe('Filtragem de pessoas', () => {
   it('deve filtrar pessoas por comum e cargo', async () => {
     // Mock dos dados
@@ -25,9 +23,7 @@ describe('Filtragem de pessoas', () => {
     ];
 
     // Teste básico de filtragem
-    const filtered = pessoas.filter(
-      p => p.comum_id === 'comum1' && p.cargo_id === 'cargo1'
-    );
+    const filtered = pessoas.filter(p => p.comum_id === 'comum1' && p.cargo_id === 'cargo1');
     expect(filtered).toHaveLength(1);
     expect(filtered[0].nome).toBe('João');
   });
@@ -42,11 +38,8 @@ describe('Fila offline', () => {
       { id: '3', status_sincronizacao: 'pending' },
     ];
 
-    const pendingCount = registros.filter(
-      r => r.status_sincronizacao === 'pending'
-    ).length;
+    const pendingCount = registros.filter(r => r.status_sincronizacao === 'pending').length;
 
     expect(pendingCount).toBe(2);
   });
 });
-

@@ -61,12 +61,7 @@ export const OfflineBadge: React.FC<OfflineBadgeProps> = ({ count, syncing = fal
 
   return (
     <View style={getBadgeStyle()}>
-      <FontAwesome5 
-        name={getIcon()} 
-        size={12} 
-        color={getIconColor()}
-        style={styles.icon}
-      />
+      <FontAwesome5 name={getIcon()} size={12} color={getIconColor()} style={styles.icon} />
       <Text style={getBadgeTextStyle()}>{getText()}</Text>
     </View>
   );
@@ -81,27 +76,35 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: theme.borderRadius.md,
-    ...(Platform.OS === 'web' ? {
-      display: 'inline-flex',
-    } : {}),
+    ...(Platform.OS === 'web'
+      ? {
+          display: 'inline-flex',
+        }
+      : {}),
   },
   badgeEmpty: {
     backgroundColor: '#dcfce7',
-    ...(Platform.OS === 'web' ? {
-      backgroundColor: '#dcfce7',
-    } : {}),
+    ...(Platform.OS === 'web'
+      ? {
+          backgroundColor: '#dcfce7',
+        }
+      : {}),
   },
   badgePending: {
     backgroundColor: '#fef3c7',
-    ...(Platform.OS === 'web' ? {
-      backgroundColor: '#fef3c7',
-    } : {}),
+    ...(Platform.OS === 'web'
+      ? {
+          backgroundColor: '#fef3c7',
+        }
+      : {}),
   },
   badgeSyncing: {
     backgroundColor: '#dbeafe',
-    ...(Platform.OS === 'web' ? {
-      backgroundColor: '#dbeafe',
-    } : {}),
+    ...(Platform.OS === 'web'
+      ? {
+          backgroundColor: '#dbeafe',
+        }
+      : {}),
   },
   badgeText: {
     fontSize: 12,
@@ -122,4 +125,3 @@ const styles = StyleSheet.create({
     marginRight: 2,
   },
 });
-

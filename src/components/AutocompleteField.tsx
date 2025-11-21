@@ -7,6 +7,9 @@ import {
   TouchableOpacity,
   StyleSheet,
   Platform,
+  ViewStyle,
+  NativeSyntheticEvent,
+  TextInputKeyPressEventData,
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { theme } from '../theme';
@@ -16,7 +19,7 @@ const { DROPDOWN_FIELD_CONTAINER, DROPDOWN_FIELD_INPUT, DROPDOWN_FIELD_DROPDOWN 
 interface AutocompleteOption {
   id: string;
   label: string;
-  value: any;
+  value: unknown;
   nomeCompleto?: string;
 }
 
@@ -28,7 +31,7 @@ interface AutocompleteFieldProps {
   placeholder?: string;
   icon?: string;
   error?: string;
-  style?: any;
+  style?: ViewStyle;
 }
 
 export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
@@ -53,7 +56,11 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
   // Normalizar texto (remove acentos, converte para minúscula)
   const normalize = (text: string) => {
     if (!text) return '';
-    return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    return text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
   };
 
   // Filtrar opções baseado no texto digitado
@@ -61,7 +68,7 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
     if (!searchText.trim() || searchText.trim().length < 2) {
       return [];
     }
-    
+
     const query = normalize(searchText);
     return options.filter(opt => {
       const labelNorm = normalize(opt.label);
@@ -121,12 +128,12 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
       clearTimeout(blurTimeoutRef.current);
       blurTimeoutRef.current = null;
     }
-    
+
     setSearchText(option.label);
     setShowList(false);
     setSelectedIndex(-1);
     onSelect(option);
-    
+
     // Blur do input após seleção
     setTimeout(() => {
       if (inputRef.current) {
@@ -136,7 +143,7 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
   };
 
   // Handler para tecla Enter (web) ou submit (mobile)
-  const handleKeyPress = (e: any) => {
+  const handleKeyPress = (e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
     // Web: verificar tecla Enter
     if (Platform.OS === 'web' && e.nativeEvent.key === 'Enter') {
       e.preventDefault();
@@ -151,7 +158,7 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
       // Selecionar primeiro item se nenhum estiver selecionado
       const indexToSelect = selectedIndex >= 0 ? selectedIndex : 0;
       const optionToSelect = filtered[indexToSelect];
-      
+
       if (optionToSelect) {
         handleSelect(optionToSelect);
       }
@@ -168,34 +175,36 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
   }, []);
 
   // Z-index dinâmico baseado no foco
-  const dynamicZIndex = isFocused || showList 
-    ? DROPDOWN_FIELD_CONTAINER + 1000 
-    : DROPDOWN_FIELD_CONTAINER;
-  const dropdownZIndex = isFocused || showList 
-    ? DROPDOWN_FIELD_DROPDOWN 
-    : DROPDOWN_FIELD_DROPDOWN - 1000;
+  const dynamicZIndex =
+    isFocused || showList ? DROPDOWN_FIELD_CONTAINER + 1000 : DROPDOWN_FIELD_CONTAINER;
+  const dropdownZIndex =
+    isFocused || showList ? DROPDOWN_FIELD_DROPDOWN : DROPDOWN_FIELD_DROPDOWN - 1000;
 
   return (
-    <View 
+    <View
       style={[
-        styles.container, 
+        styles.container,
         style,
-        Platform.OS === 'web' && (isFocused || showList) ? { 
-          zIndex: dynamicZIndex,
-          position: 'relative' as any,
-        } : {}
-      ]} 
-      ref={containerRef} 
+        Platform.OS === 'web' && (isFocused || showList)
+          ? {
+              zIndex: dynamicZIndex,
+              position: 'relative' as ViewStyle['position'],
+            }
+          : {},
+      ]}
+      ref={containerRef}
       collapsable={false}
     >
       {label && <Text style={styles.label}>{label}</Text>}
-      
-      <View 
+
+      <View
         style={[
           styles.inputContainer,
-          Platform.OS === 'web' && (isFocused || showList) ? { 
-            zIndex: dynamicZIndex,
-          } : {}
+          Platform.OS === 'web' && (isFocused || showList)
+            ? {
+                zIndex: dynamicZIndex,
+              }
+            : {},
         ]}
       >
         <TextInput
@@ -211,15 +220,17 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
           returnKeyType="done"
           onSubmitEditing={handleEnterPress}
         />
-        
+
         {/* Dropdown inline - SEM Modal */}
         {showList && filtered.length > 0 && (
-          <View 
+          <View
             style={[
               styles.dropdown,
-              Platform.OS === 'web' ? { 
-                zIndex: dropdownZIndex,
-              } : {}
+              Platform.OS === 'web'
+                ? {
+                    zIndex: dropdownZIndex,
+                  }
+                : {},
             ]}
           >
             <FlatList
@@ -228,19 +239,16 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
               keyExtractor={item => item.id}
               renderItem={({ item, index }) => (
                 <TouchableOpacity
-                  style={[
-                    styles.item,
-                    index === selectedIndex && styles.itemSelected
-                  ]}
+                  style={[styles.item, index === selectedIndex && styles.itemSelected]}
                   onPress={() => {
                     setSelectedIndex(index);
                     handleSelect(item);
                   }}
                   activeOpacity={0.7}
                 >
-                  <FontAwesome5 
-                    name={icon} 
-                    size={12} 
+                  <FontAwesome5
+                    name={icon}
+                    size={12}
                     color={theme.colors.textSecondary}
                     style={styles.icon}
                   />
@@ -266,7 +274,7 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
           </View>
         )}
       </View>
-      
+
       {error && <Text style={styles.errorText}>{error}</Text>}
     </View>
   );
@@ -275,10 +283,12 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
 const styles = StyleSheet.create({
   container: {
     marginBottom: theme.spacing.md,
-    ...(Platform.OS === 'web' ? { 
-      position: 'relative' as any,
-      zIndex: DROPDOWN_FIELD_CONTAINER,
-    } : {}),
+    ...(Platform.OS === 'web'
+      ? {
+          position: 'relative' as ViewStyle['position'],
+          zIndex: DROPDOWN_FIELD_CONTAINER,
+        }
+      : {}),
   },
   label: {
     fontSize: theme.fontSize.sm,
@@ -289,10 +299,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   inputContainer: {
-    position: 'relative' as any,
-    ...(Platform.OS === 'web' ? { 
-      zIndex: DROPDOWN_FIELD_CONTAINER,
-    } : {}),
+    position: 'relative' as ViewStyle['position'],
+    ...(Platform.OS === 'web'
+      ? {
+          zIndex: DROPDOWN_FIELD_CONTAINER,
+        }
+      : {}),
   },
   input: {
     borderWidth: 1,
@@ -304,16 +316,18 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.md,
     color: theme.colors.text,
     minHeight: 48,
-    ...(Platform.OS === 'web' ? { 
-      position: 'relative' as any,
-      zIndex: DROPDOWN_FIELD_INPUT,
-    } : {}),
+    ...(Platform.OS === 'web'
+      ? {
+          position: 'relative' as ViewStyle['position'],
+          zIndex: DROPDOWN_FIELD_INPUT,
+        }
+      : {}),
   },
   inputError: {
     borderColor: theme.colors.error,
   },
   dropdown: {
-    position: 'absolute' as any,
+    position: 'absolute' as ViewStyle['position'],
     top: '100%',
     left: 0,
     right: 0,
@@ -329,12 +343,14 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 15,
     overflow: 'hidden',
-    ...(Platform.OS === 'web' ? { 
-      zIndex: DROPDOWN_FIELD_DROPDOWN,
-      position: 'absolute' as any,
-    } : {
-      zIndex: 1000,
-    }),
+    ...(Platform.OS === 'web'
+      ? {
+          zIndex: DROPDOWN_FIELD_DROPDOWN,
+          position: 'absolute' as ViewStyle['position'],
+        }
+      : {
+          zIndex: 1000,
+        }),
   },
   list: {
     maxHeight: 300,

@@ -21,7 +21,7 @@ export const AppNavigator: React.FC = () => {
     // Só navegar se houve mudança de autenticado para não autenticado
     const wasAuthenticated = previousUserRef.current !== null;
     const isNowUnauthenticated = !loading && !user;
-    
+
     if (wasAuthenticated && isNowUnauthenticated && navigationRef.current?.isReady()) {
       // Pequeno delay para garantir que o estado foi atualizado
       const timer = setTimeout(() => {
@@ -34,10 +34,10 @@ export const AppNavigator: React.FC = () => {
           console.warn('Erro ao navegar para Login:', error);
         }
       }, 100);
-      
+
       return () => clearTimeout(timer);
     }
-    
+
     // Atualizar referência do usuário anterior
     previousUserRef.current = user;
   }, [user, loading]);
@@ -56,7 +56,7 @@ export const AppNavigator: React.FC = () => {
           console.warn('Erro ao navegar para Login:', error);
         }
       }, 100);
-      
+
       return () => clearTimeout(timer);
     }
   }, [user, loading]);
@@ -101,4 +101,3 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
   },
 });
-

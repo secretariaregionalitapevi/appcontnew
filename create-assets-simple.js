@@ -24,4 +24,3 @@ O aplicativo funcionará mesmo sem esses arquivos, mas eles são recomendados pa
 
 fs.writeFileSync(path.join(assetsDir, 'README.md'), readme);
 console.log('Pasta assets criada! Adicione os arquivos de imagem manualmente ou use placeholders.');
-

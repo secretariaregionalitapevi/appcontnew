@@ -5,9 +5,11 @@ import { AuthProvider } from './src/context/AuthContext';
 import { AppNavigator } from './src/navigation/AppNavigator';
 
 // Importar Toast apenas para plataformas nativas (não web)
-let Toast: any = null;
+type ToastComponent = React.ComponentType | null;
+let Toast: ToastComponent = null;
 if (Platform.OS !== 'web') {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     Toast = require('react-native-toast-message').default;
   } catch (error) {
     console.warn('Toast não disponível:', error);
@@ -32,12 +34,8 @@ export default function App() {
     return (
       <View style={styles.errorContainer}>
         <Text style={styles.errorTitle}>Erro ao inicializar</Text>
-        <Text style={styles.errorText}>
-          {initError.message || 'Erro desconhecido'}
-        </Text>
-        <Text style={styles.errorStack}>
-          {initError.stack || ''}
-        </Text>
+        <Text style={styles.errorText}>{initError.message || 'Erro desconhecido'}</Text>
+        <Text style={styles.errorStack}>{initError.stack || ''}</Text>
       </View>
     );
   }
@@ -68,9 +66,7 @@ export default function App() {
     return (
       <View style={styles.errorContainer}>
         <Text style={styles.errorTitle}>Erro ao inicializar</Text>
-        <Text style={styles.errorText}>
-          {err.message || 'Erro desconhecido'}
-        </Text>
+        <Text style={styles.errorText}>{err.message || 'Erro desconhecido'}</Text>
       </View>
     );
   }
@@ -108,13 +104,9 @@ class ErrorBoundary extends React.Component<
       return (
         <View style={styles.errorContainer}>
           <Text style={styles.errorTitle}>Erro ao carregar o aplicativo</Text>
-          <Text style={styles.errorText}>
-            {this.state.error?.message || 'Erro desconhecido'}
-          </Text>
+          <Text style={styles.errorText}>{this.state.error?.message || 'Erro desconhecido'}</Text>
           {__DEV__ && this.state.error?.stack && (
-            <Text style={styles.errorStack}>
-              {this.state.error.stack}
-            </Text>
+            <Text style={styles.errorStack}>{this.state.error.stack}</Text>
           )}
         </View>
       );
@@ -166,4 +158,3 @@ const styles = StyleSheet.create({
     maxHeight: 200,
   },
 });
-

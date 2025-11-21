@@ -7,14 +7,14 @@ import {
   FlatList,
   StyleSheet,
   TextInput,
+  ViewStyle,
 } from 'react-native';
-import { FontAwesome5 } from '@expo/vector-icons';
 import { theme } from '../theme';
 
 interface SelectOption {
   id: string;
   label: string;
-  value: any;
+  value: unknown;
 }
 
 interface SelectFieldProps {
@@ -25,7 +25,7 @@ interface SelectFieldProps {
   placeholder?: string;
   searchable?: boolean;
   error?: string;
-  style?: any;
+  style?: ViewStyle;
 }
 
 export const SelectField: React.FC<SelectFieldProps> = ({
@@ -52,13 +52,14 @@ export const SelectField: React.FC<SelectFieldProps> = ({
       .trim();
   };
 
-  const filteredOptions = searchable && searchQuery
-    ? options.filter(opt => {
-        const normalizedLabel = normalizeText(opt.label);
-        const normalizedQuery = normalizeText(searchQuery);
-        return normalizedLabel.includes(normalizedQuery);
-      })
-    : options;
+  const filteredOptions =
+    searchable && searchQuery
+      ? options.filter(opt => {
+          const normalizedLabel = normalizeText(opt.label);
+          const normalizedQuery = normalizeText(searchQuery);
+          return normalizedLabel.includes(normalizedQuery);
+        })
+      : options;
 
   const handleSelect = (option: SelectOption) => {
     onSelect(option);
@@ -67,7 +68,7 @@ export const SelectField: React.FC<SelectFieldProps> = ({
   };
 
   const isInline = !label;
-  
+
   return (
     <View style={[styles.container, isInline && styles.containerInline]}>
       {label && <Text style={styles.label}>{label}</Text>}
@@ -78,19 +79,21 @@ export const SelectField: React.FC<SelectFieldProps> = ({
           isInline && styles.selectButtonInline,
           style,
         ]}
-        onPress={(e) => {
+        onPress={e => {
           e.preventDefault();
           e.stopPropagation();
-          console.log('🔘 SelectField pressionado, abrindo modal. Options:', options.length, 'modalVisible:', modalVisible);
+          console.log(
+            '🔘 SelectField pressionado, abrindo modal. Options:',
+            options.length,
+            'modalVisible:',
+            modalVisible
+          );
           setModalVisible(true);
         }}
         activeOpacity={0.7}
       >
         <Text
-          style={[
-            styles.selectText,
-            !selectedOption && styles.placeholderText,
-          ]}
+          style={[styles.selectText, !selectedOption && styles.placeholderText]}
           numberOfLines={1}
         >
           {selectedOption ? selectedOption.label : placeholder}
@@ -121,7 +124,7 @@ export const SelectField: React.FC<SelectFieldProps> = ({
           <TouchableOpacity
             style={styles.modalContent}
             activeOpacity={1}
-            onPress={(e) => {
+            onPress={e => {
               // Prevenir que o clique no conteúdo feche o modal
               e.stopPropagation();
             }}
@@ -338,4 +341,3 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
   },
 });
-

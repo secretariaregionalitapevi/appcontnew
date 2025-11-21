@@ -1,5 +1,13 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, ViewStyle, Platform, View } from 'react-native';
+import {
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  ViewStyle,
+  Platform,
+  View,
+} from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import { theme } from '../theme';
 
@@ -20,11 +28,7 @@ export const PrimaryButton: React.FC<PrimaryButtonProps> = ({
 }) => {
   return (
     <TouchableOpacity
-      style={[
-        styles.button,
-        (disabled || loading) && styles.buttonDisabled,
-        style,
-      ]}
+      style={[styles.button, (disabled || loading) && styles.buttonDisabled, style]}
       onPress={onPress}
       disabled={disabled || loading}
       activeOpacity={0.85}
@@ -33,9 +37,9 @@ export const PrimaryButton: React.FC<PrimaryButtonProps> = ({
         <ActivityIndicator color={theme.colors.surface} size="small" />
       ) : (
         <View style={styles.buttonContent}>
-          <FontAwesome 
-            name="paper-plane" 
-            size={12} 
+          <FontAwesome
+            name="paper-plane"
+            size={12}
             color={theme.colors.surface}
             style={styles.icon}
           />
@@ -56,30 +60,34 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     minHeight: 40,
     alignSelf: 'center',
-    ...(Platform.OS === 'web' ? {
-      background: `linear-gradient(135deg, ${theme.colors.primary} 0%, ${theme.colors.primaryDark} 100%)`,
-      boxShadow: '0 2px 8px rgba(26, 179, 148, 0.2)',
-      transition: 'all 0.2s ease',
-      cursor: 'pointer',
-    } : {
-      shadowColor: theme.colors.primary,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.2,
-      shadowRadius: 4,
-      elevation: 2,
-    }),
+    ...(Platform.OS === 'web'
+      ? {
+          background: `linear-gradient(135deg, ${theme.colors.primary} 0%, ${theme.colors.primaryDark} 100%)`,
+          boxShadow: '0 2px 8px rgba(26, 179, 148, 0.2)',
+          transition: 'all 0.2s ease',
+          cursor: 'pointer',
+        }
+      : {
+          shadowColor: theme.colors.primary,
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.2,
+          shadowRadius: 4,
+          elevation: 2,
+        }),
   },
   buttonDisabled: {
     backgroundColor: theme.colors.disabled,
-    ...(Platform.OS === 'web' ? {
-      background: theme.colors.disabled,
-      boxShadow: 'none',
-      cursor: 'not-allowed',
-      transform: 'none',
-    } : {
-      shadowOpacity: 0,
-      elevation: 0,
-    }),
+    ...(Platform.OS === 'web'
+      ? {
+          background: theme.colors.disabled,
+          boxShadow: 'none',
+          cursor: 'not-allowed',
+          transform: 'none',
+        }
+      : {
+          shadowOpacity: 0,
+          elevation: 0,
+        }),
   },
   buttonContent: {
     flexDirection: 'row',
@@ -98,4 +106,3 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 });
-

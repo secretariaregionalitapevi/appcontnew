@@ -8,7 +8,7 @@ const getWebDatabase = async (): Promise<any> => {
   if (Platform.OS !== 'web') {
     throw new Error('getWebDatabase só deve ser usado no web');
   }
-  
+
   // Para web, vamos usar uma implementação simplificada com localStorage
   // Em produção, considere usar uma biblioteca como Dexie.js para IndexedDB
   return {
@@ -38,7 +38,7 @@ export const getDatabase = async (): Promise<SQLite.SQLiteDatabase | any> => {
   if (Platform.OS === 'web') {
     return getWebDatabase();
   }
-  
+
   if (!db && !isInitializing) {
     isInitializing = true;
     try {
@@ -51,11 +51,11 @@ export const getDatabase = async (): Promise<SQLite.SQLiteDatabase | any> => {
     }
     isInitializing = false;
   }
-  
+
   if (!db) {
     throw new Error('Banco de dados não inicializado');
   }
-  
+
   return db;
 };
 
@@ -71,8 +71,8 @@ const initializeDatabase = async (database: SQLite.SQLiteDatabase): Promise<void
     );
   `);
 
-  // Tabela de cargos
-  await database.execAsync(`
+    // Tabela de cargos
+    await database.execAsync(`
     CREATE TABLE IF NOT EXISTS cargos (
       id TEXT PRIMARY KEY,
       nome TEXT NOT NULL,
@@ -82,8 +82,8 @@ const initializeDatabase = async (database: SQLite.SQLiteDatabase): Promise<void
     );
   `);
 
-  // Tabela de instrumentos
-  await database.execAsync(`
+    // Tabela de instrumentos
+    await database.execAsync(`
     CREATE TABLE IF NOT EXISTS instrumentos (
       id TEXT PRIMARY KEY,
       nome TEXT NOT NULL,
@@ -92,8 +92,8 @@ const initializeDatabase = async (database: SQLite.SQLiteDatabase): Promise<void
     );
   `);
 
-  // Tabela de pessoas
-  await database.execAsync(`
+    // Tabela de pessoas
+    await database.execAsync(`
     CREATE TABLE IF NOT EXISTS pessoas (
       id TEXT PRIMARY KEY,
       nome TEXT NOT NULL,
@@ -110,8 +110,8 @@ const initializeDatabase = async (database: SQLite.SQLiteDatabase): Promise<void
     );
   `);
 
-  // Tabela de registros de presença
-  await database.execAsync(`
+    // Tabela de registros de presença
+    await database.execAsync(`
     CREATE TABLE IF NOT EXISTS registros_presenca (
       id TEXT PRIMARY KEY,
       pessoa_id TEXT NOT NULL,
@@ -141,4 +141,3 @@ const initializeDatabase = async (database: SQLite.SQLiteDatabase): Promise<void
     throw error;
   }
 };
-

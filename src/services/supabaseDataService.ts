@@ -24,12 +24,33 @@ const memoryCache: {
 
 // Lista fixa de instrumentos do backup.js
 const INSTRUMENTS_FIXED = [
-  'ACORDEON', 'VIOLINO', 'VIOLA', 'VIOLONCELO', 'FLAUTA', 'OBOÉ', "OBOÉ D'AMORE", 
-  'CORNE INGLÊS', 'CLARINETE', 'CLARINETE ALTO', 'CLARINETE BAIXO (CLARONE)', 
-  'FAGOTE', 'SAXOFONE SOPRANO (RETO)', 'SAXOFONE ALTO', 'SAXOFONE TENOR',
-  'SAXOFONE BARÍTONO', 'SAX OCTA CONTRABAIXO', 'TROMPA', 'TROMPETE', 'CORNET', 
-  'FLUGELHORN', 'TROMBONE', 'TROMBONITO', 'EUFÔNIO', 'BARÍTONO (PISTO)', 'TUBA',
-  'ÓRGÃO'
+  'ACORDEON',
+  'VIOLINO',
+  'VIOLA',
+  'VIOLONCELO',
+  'FLAUTA',
+  'OBOÉ',
+  "OBOÉ D'AMORE",
+  'CORNE INGLÊS',
+  'CLARINETE',
+  'CLARINETE ALTO',
+  'CLARINETE BAIXO (CLARONE)',
+  'FAGOTE',
+  'SAXOFONE SOPRANO (RETO)',
+  'SAXOFONE ALTO',
+  'SAXOFONE TENOR',
+  'SAXOFONE BARÍTONO',
+  'SAX OCTA CONTRABAIXO',
+  'TROMPA',
+  'TROMPETE',
+  'CORNET',
+  'FLUGELHORN',
+  'TROMBONE',
+  'TROMBONITO',
+  'EUFÔNIO',
+  'BARÍTONO (PISTO)',
+  'TUBA',
+  'ÓRGÃO',
 ];
 
 // Lista fixa de cargos do backup.js (ordem exata do CARGOS_FIXED)
@@ -44,7 +65,7 @@ const CARGOS_FIXED = [
   'Porteiro (a)',
   'Bombeiro (a)',
   'Médico (a)',
-  'Enfermeiro (a)'
+  'Enfermeiro (a)',
 ];
 
 export const supabaseDataService = {
@@ -56,7 +77,7 @@ export const supabaseDataService = {
 
     try {
       console.log('📚 Buscando comuns da tabela cadastro (seguindo lógica do app.js)...');
-      
+
       // Tentar primeiro com 'cadastro', depois 'musicos_unificado' (fallback)
       let tableName = 'cadastro';
       let allData: any[] = [];
@@ -64,12 +85,15 @@ export const supabaseDataService = {
       let currentPage = 0;
       const pageSize = 1000; // Supabase permite até 1000 por página
       let finalError: any = null;
-      
+
       // Função para buscar uma página
-      const fetchPage = async (table: string, page: number): Promise<{ data: any[]; error: any; hasMore: boolean }> => {
+      const fetchPage = async (
+        table: string,
+        page: number
+      ): Promise<{ data: any[]; error: any; hasMore: boolean }> => {
         const from = page * pageSize;
         const to = from + pageSize - 1;
-        
+
         try {
           // Buscar apenas comum (sem filtro de ativo)
           let result = await supabase
@@ -79,20 +103,22 @@ export const supabaseDataService = {
             .neq('comum', '')
             .order('comum', { ascending: true })
             .range(from, to);
-          
+
           // Se der erro 400, tentar query simplificada
           if (result.error && (result.error.code === '400' || result.error.code === 'PGRST116')) {
-            console.log(`⚠️ Erro ${result.error.code} na query completa, tentando query simplificada...`);
+            console.log(
+              `⚠️ Erro ${result.error.code} na query completa, tentando query simplificada...`
+            );
             result = await supabase
               .from(table)
               .select('comum')
               .order('comum', { ascending: true })
               .range(from, to);
-            
+
             if (!result.error && result.data) {
               // Filtrar nulls e vazios no cliente
-              const filtered = result.data.filter((r: any) => 
-                r.comum && typeof r.comum === 'string' && r.comum.trim() !== ''
+              const filtered = result.data.filter(
+                (r: any) => r.comum && typeof r.comum === 'string' && r.comum.trim() !== ''
               );
               return {
                 data: filtered,
@@ -101,7 +127,7 @@ export const supabaseDataService = {
               };
             }
           }
-          
+
           if (result.error) {
             return {
               data: [],
@@ -109,7 +135,7 @@ export const supabaseDataService = {
               hasMore: false,
             };
           }
-          
+
           return {
             data: result.data || [],
             error: null,
@@ -123,12 +149,12 @@ export const supabaseDataService = {
           };
         }
       };
-      
+
       // Tentar primeiro com 'cadastro'
       while (hasMore) {
         try {
           const pageResult = await fetchPage(tableName, currentPage);
-          
+
           if (pageResult.error) {
             // Se for primeira página e der erro, tentar fallback
             if (currentPage === 0 && tableName === 'cadastro') {
@@ -141,12 +167,14 @@ export const supabaseDataService = {
             finalError = pageResult.error;
             break;
           }
-          
+
           if (pageResult.data && pageResult.data.length > 0) {
             allData = allData.concat(pageResult.data);
-            console.log(`📄 Página ${currentPage + 1}: ${pageResult.data.length} registros (total: ${allData.length})`);
+            console.log(
+              `📄 Página ${currentPage + 1}: ${pageResult.data.length} registros (total: ${allData.length})`
+            );
           }
-          
+
           hasMore = pageResult.hasMore;
           currentPage++;
         } catch (error) {
@@ -163,7 +191,7 @@ export const supabaseDataService = {
           break;
         }
       }
-      
+
       // Se ainda não encontrou dados e estava tentando 'cadastro', tentar 'musicos_unificado'
       if (allData.length === 0 && tableName === 'cadastro' && !finalError) {
         console.log('⚠️ Nenhum dado encontrado na tabela cadastro, tentando musicos_unificado...');
@@ -171,21 +199,23 @@ export const supabaseDataService = {
         currentPage = 0;
         hasMore = true;
         allData = [];
-        
+
         while (hasMore) {
           try {
             const pageResult = await fetchPage(tableName, currentPage);
-            
+
             if (pageResult.error) {
               finalError = pageResult.error;
               break;
             }
-            
+
             if (pageResult.data && pageResult.data.length > 0) {
               allData = allData.concat(pageResult.data);
-              console.log(`📄 Página ${currentPage + 1}: ${pageResult.data.length} registros (total: ${allData.length})`);
+              console.log(
+                `📄 Página ${currentPage + 1}: ${pageResult.data.length} registros (total: ${allData.length})`
+              );
             }
-            
+
             hasMore = pageResult.hasMore;
             currentPage++;
           } catch (error) {
@@ -195,22 +225,22 @@ export const supabaseDataService = {
           }
         }
       }
-      
+
       if (finalError) {
         console.error('❌ Erro ao buscar comuns:', finalError);
         throw finalError;
       }
-      
+
       if (allData.length === 0) {
         console.warn('⚠️ Nenhuma comum encontrada na tabela', tableName);
         return [];
       }
-      
+
       console.log(`✅ Total de ${allData.length} registros encontrados na tabela ${tableName}`);
-      
+
       // Extrair valores únicos de 'comum' e normalizar (seguindo lógica do app.js)
       const comunsSet = new Set<string>();
-      
+
       allData.forEach((record: any) => {
         const comum = record.comum;
         if (comum && typeof comum === 'string') {
@@ -222,14 +252,12 @@ export const supabaseDataService = {
           }
         }
       });
-      
+
       // Converter Set para array e ordenar
-      const comunsArray = Array.from(comunsSet).sort((a, b) => 
-        a.localeCompare(b, 'pt-BR')
-      );
-      
+      const comunsArray = Array.from(comunsSet).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
       console.log(`✅ ${comunsArray.length} comuns únicas encontradas`);
-      
+
       // Função para extrair apenas o nome da comum (remover código de localização)
       // Exemplo: "BR-22-1739 - JARDIM MIRANDA" -> "JARDIM MIRANDA"
       const extrairNomeComum = (comumCompleto: string): string => {
@@ -259,10 +287,13 @@ export const supabaseDataService = {
           updated_at: new Date().toISOString(),
         } as any;
       });
-      
+
       console.log(`✅ Retornando ${comuns.length} comuns processadas da tabela ${tableName}`);
-      console.log(`📋 Primeiras 5 comuns:`, comuns.slice(0, 5).map(c => c.nome));
-      
+      console.log(
+        `📋 Primeiras 5 comuns:`,
+        comuns.slice(0, 5).map(c => c.nome)
+      );
+
       return comuns;
     } catch (error) {
       console.error('❌ Erro ao buscar comuns:', error);
@@ -273,18 +304,18 @@ export const supabaseDataService = {
   async syncComunsToLocal(): Promise<void> {
     try {
       console.log('🔄 Sincronizando comuns do Supabase para banco local...');
-    const comuns = await this.fetchComuns();
-      
+      const comuns = await this.fetchComuns();
+
       if (comuns.length === 0) {
         console.warn('⚠️ Nenhuma comum retornada do Supabase');
         return;
       }
-      
+
       console.log(`✅ ${comuns.length} comuns recebidas do Supabase`);
-      
+
       // Salvar no cache em memória (para web)
       memoryCache.comuns = comuns;
-      
+
       // Salvar no AsyncStorage (para web)
       if (Platform.OS === 'web') {
         try {
@@ -294,19 +325,19 @@ export const supabaseDataService = {
           console.warn('⚠️ Erro ao salvar no AsyncStorage:', error);
         }
       }
-      
+
       // Tentar salvar no SQLite (para mobile)
       if (Platform.OS !== 'web') {
         try {
-    const db = await getDatabase();
-    await db.withTransactionAsync(async () => {
-      for (const comum of comuns) {
-        await db.runAsync(
-          `INSERT OR REPLACE INTO comuns (id, nome, created_at, updated_at) VALUES (?, ?, ?, ?)`,
-          [comum.id, comum.nome, comum.created_at || null, comum.updated_at || null]
-        );
-      }
-    });
+          const db = await getDatabase();
+          await db.withTransactionAsync(async () => {
+            for (const comum of comuns) {
+              await db.runAsync(
+                `INSERT OR REPLACE INTO comuns (id, nome, created_at, updated_at) VALUES (?, ?, ?, ?)`,
+                [comum.id, comum.nome, comum.created_at || null, comum.updated_at || null]
+              );
+            }
+          });
           console.log(`✅ ${comuns.length} comuns sincronizadas para banco local (mobile)`);
         } catch (error) {
           console.warn('⚠️ Erro ao salvar no SQLite (mobile):', error);
@@ -326,7 +357,7 @@ export const supabaseDataService = {
         console.log(`✅ Retornando ${memoryCache.comuns.length} comuns do cache em memória`);
         return memoryCache.comuns;
       }
-      
+
       // Tentar AsyncStorage
       try {
         const cached = await AsyncStorage.getItem('cache_comuns');
@@ -339,18 +370,16 @@ export const supabaseDataService = {
       } catch (error) {
         console.warn('⚠️ Erro ao ler do AsyncStorage:', error);
       }
-      
+
       console.warn('⚠️ Nenhuma comum encontrada no cache (web)');
       return [];
     }
-    
+
     // Para mobile, usar SQLite
     try {
-    const db = await getDatabase();
-    const result = await db.getAllAsync(
-      'SELECT * FROM comuns ORDER BY nome'
-    ) as Comum[];
-    return result;
+      const db = await getDatabase();
+      const result = (await db.getAllAsync('SELECT * FROM comuns ORDER BY nome')) as Comum[];
+      return result;
     } catch (error) {
       console.warn('⚠️ Erro ao ler do SQLite:', error);
       return [];
@@ -360,12 +389,12 @@ export const supabaseDataService = {
   // Cargos - Usar lista fixa do backup.js
   async fetchCargos(): Promise<Cargo[]> {
     console.log('📚 Usando lista fixa de cargos do backup.js...');
-    
+
     // Sempre usar lista fixa de cargos (seguindo lógica do backup.js)
     const cargos: Cargo[] = CARGOS_FIXED.map((nome, index) => {
       // Determinar se é cargo musical baseado no nome (apenas Músico e Organista requerem instrumento obrigatório)
       const isMusical = nome === 'Músico' || nome === 'Organista';
-      
+
       return {
         id: `cargo_${index + 1}_${nome.toLowerCase().replace(/\s+/g, '_').replace(/[()]/g, '')}`,
         nome: nome,
@@ -374,36 +403,36 @@ export const supabaseDataService = {
         updated_at: new Date().toISOString(),
       };
     });
-    
+
     console.log(`✅ ${cargos.length} cargos da lista fixa`);
-    
+
     // Salvar no cache em memória (para web)
     memoryCache.cargos = cargos;
     // Salvar no AsyncStorage (para web)
     if (Platform.OS === 'web') {
       await AsyncStorage.setItem('cached_cargos', JSON.stringify(cargos));
     }
-    
+
     return cargos;
   },
 
   async syncCargosToLocal(): Promise<void> {
     try {
       console.log('🔄 Sincronizando cargos (lista fixa)...');
-      
+
       // Sempre usar lista fixa de cargos
-    const cargos = await this.fetchCargos();
-      
+      const cargos = await this.fetchCargos();
+
       if (cargos.length === 0) {
         console.warn('⚠️ Nenhum cargo retornado');
         return;
       }
-      
+
       console.log(`✅ ${cargos.length} cargos da lista fixa`);
-      
+
       // Salvar no cache em memória (para web)
       memoryCache.cargos = cargos;
-      
+
       // Salvar no AsyncStorage (para web)
       if (Platform.OS === 'web') {
         try {
@@ -413,19 +442,25 @@ export const supabaseDataService = {
           console.warn('⚠️ Erro ao salvar no AsyncStorage:', error);
         }
       }
-      
+
       // Tentar salvar no SQLite (para mobile)
       if (Platform.OS !== 'web') {
         try {
-    const db = await getDatabase();
-    await db.withTransactionAsync(async () => {
-      for (const cargo of cargos) {
-        await db.runAsync(
-          `INSERT OR REPLACE INTO cargos (id, nome, is_musical, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
-          [cargo.id, cargo.nome, cargo.is_musical ? 1 : 0, cargo.created_at || null, cargo.updated_at || null]
-        );
-      }
-    });
+          const db = await getDatabase();
+          await db.withTransactionAsync(async () => {
+            for (const cargo of cargos) {
+              await db.runAsync(
+                `INSERT OR REPLACE INTO cargos (id, nome, is_musical, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
+                [
+                  cargo.id,
+                  cargo.nome,
+                  cargo.is_musical ? 1 : 0,
+                  cargo.created_at || null,
+                  cargo.updated_at || null,
+                ]
+              );
+            }
+          });
           console.log(`✅ ${cargos.length} cargos sincronizados para banco local (mobile)`);
         } catch (error) {
           console.warn('⚠️ Erro ao salvar no SQLite (mobile):', error);
@@ -450,7 +485,7 @@ export const supabaseDataService = {
         updated_at: new Date().toISOString(),
       };
     });
-    
+
     // Para web, usar cache em memória ou AsyncStorage
     if (Platform.OS === 'web') {
       // Primeiro tentar cache em memória
@@ -463,7 +498,7 @@ export const supabaseDataService = {
         console.log(`✅ Retornando ${cargosOrdenados.length} cargos do cache (ordem fixa)`);
         return cargosOrdenados;
       }
-      
+
       // Tentar AsyncStorage
       try {
         const cached = await AsyncStorage.getItem('cached_cargos');
@@ -475,30 +510,30 @@ export const supabaseDataService = {
             return cargo || cargosNaOrdem.find(c => c.nome === nome)!;
           });
           memoryCache.cargos = cargosOrdenados;
-          console.log(`✅ Retornando ${cargosOrdenados.length} cargos do AsyncStorage (ordem fixa)`);
+          console.log(
+            `✅ Retornando ${cargosOrdenados.length} cargos do AsyncStorage (ordem fixa)`
+          );
           return cargosOrdenados;
         }
       } catch (error) {
         console.warn('⚠️ Erro ao ler do AsyncStorage:', error);
       }
-      
+
       console.log(`✅ Retornando ${cargosNaOrdem.length} cargos da lista fixa (ordem exata)`);
       return cargosNaOrdem;
     }
-    
+
     // Para mobile, usar SQLite
     try {
-    const db = await getDatabase();
-    const result = await db.getAllAsync(
-        'SELECT * FROM cargos'
-    ) as Cargo[];
-      
+      const db = await getDatabase();
+      const result = (await db.getAllAsync('SELECT * FROM cargos')) as Cargo[];
+
       // Reordenar conforme lista fixa (manter ordem exata)
       const cargosOrdenados = CARGOS_FIXED.map(nome => {
         const cargo = result.find(c => c.nome === nome);
         return cargo || cargosNaOrdem.find(c => c.nome === nome)!;
       });
-      
+
       return cargosOrdenados.map(c => ({ ...c, is_musical: (c as any).is_musical === 1 }));
     } catch (error) {
       console.warn('⚠️ Erro ao ler do SQLite, usando lista fixa:', error);
@@ -515,13 +550,13 @@ export const supabaseDataService = {
     try {
       // Tentar buscar da tabela 'instrumentos'
       let result = await supabase.from('instrumentos').select('*').order('nome');
-      
+
       if (result.error) {
         console.warn('⚠️ Erro ao buscar instrumentos da tabela instrumentos:', result.error);
-        
+
         // Se a tabela não existir, tentar buscar da tabela cadastro/musicos_unificado
         console.log('🔄 Tentando buscar instrumentos da tabela cadastro...');
-        
+
         // Tentar 'cadastro' primeiro
         let tableName = 'cadastro';
         let instrumentosData = await supabase
@@ -529,8 +564,12 @@ export const supabaseDataService = {
           .select('instrumento')
           .not('instrumento', 'is', null)
           .neq('instrumento', '');
-        
-        if (instrumentosData.error || !instrumentosData.data || instrumentosData.data.length === 0) {
+
+        if (
+          instrumentosData.error ||
+          !instrumentosData.data ||
+          instrumentosData.data.length === 0
+        ) {
           console.log('⚠️ Tabela cadastro não encontrada, tentando musicos_unificado...');
           tableName = 'musicos_unificado';
           instrumentosData = await supabase
@@ -539,18 +578,18 @@ export const supabaseDataService = {
             .not('instrumento', 'is', null)
             .neq('instrumento', '');
         }
-        
+
         if (instrumentosData.error) {
           console.error('❌ Erro ao buscar instrumentos:', instrumentosData.error);
           // Retornar lista padrão de instrumentos como fallback
           return this.getDefaultInstrumentos();
         }
-        
+
         if (!instrumentosData.data || instrumentosData.data.length === 0) {
           console.warn('⚠️ Nenhum instrumento encontrado, usando lista padrão');
           return this.getDefaultInstrumentos();
         }
-        
+
         // Extrair valores únicos e normalizar
         const instrumentosSet = new Set<string>();
         instrumentosData.data.forEach((record: any) => {
@@ -565,13 +604,15 @@ export const supabaseDataService = {
             }
           }
         });
-        
-        const instrumentosArray = Array.from(instrumentosSet).sort((a, b) => 
+
+        const instrumentosArray = Array.from(instrumentosSet).sort((a, b) =>
           a.localeCompare(b, 'pt-BR')
         );
-        
-        console.log(`✅ ${instrumentosArray.length} instrumentos únicos encontrados na tabela ${tableName}`);
-        
+
+        console.log(
+          `✅ ${instrumentosArray.length} instrumentos únicos encontrados na tabela ${tableName}`
+        );
+
         // Converter para formato Instrumento[]
         const instrumentos: Instrumento[] = instrumentosArray.map((nome, index) => ({
           id: `instrumento_${index + 1}_${nome.toLowerCase().replace(/\s+/g, '_')}`,
@@ -579,10 +620,10 @@ export const supabaseDataService = {
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         }));
-        
+
         return instrumentos;
       }
-      
+
       return result.data || [];
     } catch (error) {
       console.error('❌ Erro ao buscar instrumentos:', error);
@@ -604,15 +645,15 @@ export const supabaseDataService = {
   async syncInstrumentosToLocal(): Promise<void> {
     try {
       console.log('🔄 Sincronizando instrumentos...');
-      
+
       // Sempre usar lista fixa de instrumentos do backup.js
       const instrumentos = this.getDefaultInstrumentos();
-      
+
       console.log(`✅ ${instrumentos.length} instrumentos da lista fixa`);
-      
+
       // Salvar no cache em memória (para web)
       memoryCache.instrumentos = instrumentos;
-      
+
       // Salvar no AsyncStorage (para web)
       if (Platform.OS === 'web') {
         try {
@@ -622,20 +663,27 @@ export const supabaseDataService = {
           console.warn('⚠️ Erro ao salvar no AsyncStorage:', error);
         }
       }
-      
+
       // Tentar salvar no SQLite (para mobile)
       if (Platform.OS !== 'web') {
         try {
-    const db = await getDatabase();
-    await db.withTransactionAsync(async () => {
-      for (const instrumento of instrumentos) {
-        await db.runAsync(
-          `INSERT OR REPLACE INTO instrumentos (id, nome, created_at, updated_at) VALUES (?, ?, ?, ?)`,
-          [instrumento.id, instrumento.nome, instrumento.created_at || null, instrumento.updated_at || null]
-        );
-      }
-    });
-          console.log(`✅ ${instrumentos.length} instrumentos sincronizados para banco local (mobile)`);
+          const db = await getDatabase();
+          await db.withTransactionAsync(async () => {
+            for (const instrumento of instrumentos) {
+              await db.runAsync(
+                `INSERT OR REPLACE INTO instrumentos (id, nome, created_at, updated_at) VALUES (?, ?, ?, ?)`,
+                [
+                  instrumento.id,
+                  instrumento.nome,
+                  instrumento.created_at || null,
+                  instrumento.updated_at || null,
+                ]
+              );
+            }
+          });
+          console.log(
+            `✅ ${instrumentos.length} instrumentos sincronizados para banco local (mobile)`
+          );
         } catch (error) {
           console.warn('⚠️ Erro ao salvar no SQLite (mobile):', error);
         }
@@ -653,10 +701,12 @@ export const supabaseDataService = {
     if (Platform.OS === 'web') {
       // Primeiro tentar cache em memória
       if (memoryCache.instrumentos.length > 0) {
-        console.log(`✅ Retornando ${memoryCache.instrumentos.length} instrumentos do cache em memória`);
+        console.log(
+          `✅ Retornando ${memoryCache.instrumentos.length} instrumentos do cache em memória`
+        );
         return memoryCache.instrumentos;
       }
-      
+
       // Tentar AsyncStorage
       try {
         const cached = await AsyncStorage.getItem('cache_instrumentos');
@@ -669,20 +719,20 @@ export const supabaseDataService = {
       } catch (error) {
         console.warn('⚠️ Erro ao ler do AsyncStorage:', error);
       }
-      
+
       // Se não encontrou, usar lista padrão
       console.log('🔄 Usando lista padrão de instrumentos');
       const defaultInstrumentos = this.getDefaultInstrumentos();
       memoryCache.instrumentos = defaultInstrumentos;
       return defaultInstrumentos;
     }
-    
+
     // Para mobile, usar SQLite
     try {
-    const db = await getDatabase();
-    const result = await db.getAllAsync(
-      'SELECT * FROM instrumentos ORDER BY nome'
-    ) as Instrumento[];
+      const db = await getDatabase();
+      const result = (await db.getAllAsync(
+        'SELECT * FROM instrumentos ORDER BY nome'
+      )) as Instrumento[];
       return result.length > 0 ? result : this.getDefaultInstrumentos();
     } catch (error) {
       console.warn('⚠️ Erro ao ler do SQLite, usando lista padrão:', error);
@@ -715,23 +765,27 @@ export const supabaseDataService = {
     }
 
     try {
-      console.log('📚 Buscando pessoas da tabela cadastro:', { comumNome, cargoNome, instrumentoNome });
-      
+      console.log('📚 Buscando pessoas da tabela cadastro:', {
+        comumNome,
+        cargoNome,
+        instrumentoNome,
+      });
+
       // Normalizar valores para busca
       const comumBusca = comumNome.trim();
       const cargoBusca = cargoNome.trim().toUpperCase();
       const instrumentoBusca = instrumentoNome?.trim().toUpperCase();
-      
+
       // Determinar se precisa de instrumento obrigatório (APENAS Músico)
       // Organista NÃO precisa de instrumento (sempre toca órgão)
       const precisaInstrumento = cargoBusca === 'MÚSICO';
-      
+
       // Se precisa de instrumento mas não foi fornecido, retornar vazio
       if (precisaInstrumento && !instrumentoBusca) {
         console.log('⚠️ Cargo Músico requer instrumento');
         return [];
       }
-      
+
       // Usar APENAS tabela cadastro (sem fallback para musicos_unificado)
       const tableName = 'cadastro';
       let allData: any[] = [];
@@ -740,10 +794,13 @@ export const supabaseDataService = {
       const pageSize = 1000;
       let finalError: any = null;
 
-      const fetchPage = async (table: string, page: number): Promise<{ data: any[]; error: any; hasMore: boolean }> => {
+      const fetchPage = async (
+        table: string,
+        page: number
+      ): Promise<{ data: any[]; error: any; hasMore: boolean }> => {
         const from = page * pageSize;
         const to = from + pageSize - 1;
-        
+
         // Construir query base com filtro de comum (incluindo cidade e nivel - que é a classe da organista)
         let query = supabase
           .from(table)
@@ -774,7 +831,7 @@ export const supabaseDataService = {
 
         // Aplicar range para paginação
         const result = await query.range(from, to);
-        
+
         return {
           data: result.data || [],
           error: result.error,
@@ -786,18 +843,20 @@ export const supabaseDataService = {
       while (hasMore) {
         try {
           const pageResult = await fetchPage(tableName, currentPage);
-          
+
           if (pageResult.error) {
             finalError = pageResult.error;
             console.error('❌ Erro ao buscar da tabela cadastro:', pageResult.error);
             break;
           }
-          
+
           if (pageResult.data && pageResult.data.length > 0) {
             allData = allData.concat(pageResult.data);
-            console.log(`📄 Página ${currentPage + 1}: ${pageResult.data.length} registros (total: ${allData.length})`);
+            console.log(
+              `📄 Página ${currentPage + 1}: ${pageResult.data.length} registros (total: ${allData.length})`
+            );
           }
-          
+
           hasMore = pageResult.hasMore;
           currentPage++;
         } catch (error) {
@@ -872,15 +931,19 @@ export const supabaseDataService = {
 
     // Buscar pessoas da tabela cadastro
     try {
-      const pessoasData = await this.fetchPessoasFromCadastro(comumNome, cargoNome, instrumentoNome);
-      
+      const pessoasData = await this.fetchPessoasFromCadastro(
+        comumNome,
+        cargoNome,
+        instrumentoNome
+      );
+
       // Converter para formato Pessoa[]
       const pessoas: Pessoa[] = pessoasData.map((p, index) => {
         const nomeCompleto = (p.nome || '').trim();
         const partesNome = nomeCompleto.split(' ').filter(p => p.trim());
         const primeiroNome = partesNome[0] || '';
         const ultimoNome = partesNome.length > 1 ? partesNome[partesNome.length - 1] : '';
-        
+
         const pessoa: Pessoa = {
           id: `pessoa_${index}_${nomeCompleto.toLowerCase().replace(/\s+/g, '_')}`,
           nome: primeiroNome,
@@ -895,12 +958,12 @@ export const supabaseDataService = {
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
-        
+
         // Incluir classe_organista se existir (para Organistas) - usar campo 'nivel' da tabela
         if (p.nivel) {
           pessoa.classe_organista = p.nivel.toUpperCase().trim();
         }
-        
+
         return pessoa;
       });
 
@@ -909,26 +972,26 @@ export const supabaseDataService = {
       console.error('❌ Erro ao buscar pessoas:', error);
       // Fallback: tentar buscar do banco local se houver
       try {
-    const db = await getDatabase();
+        const db = await getDatabase();
         let query = 'SELECT * FROM pessoas';
-    const params: any[] = [];
+        const params: any[] = [];
 
-    if (comumId) {
-      query += ' AND comum_id = ?';
-      params.push(comumId);
-    }
-    if (cargoId) {
-      query += ' AND cargo_id = ?';
-      params.push(cargoId);
-    }
-    if (instrumentoId) {
-      query += ' AND instrumento_id = ?';
-      params.push(instrumentoId);
-    }
+        if (comumId) {
+          query += ' AND comum_id = ?';
+          params.push(comumId);
+        }
+        if (cargoId) {
+          query += ' AND cargo_id = ?';
+          params.push(cargoId);
+        }
+        if (instrumentoId) {
+          query += ' AND instrumento_id = ?';
+          params.push(instrumentoId);
+        }
 
-    query += ' ORDER BY nome, sobrenome';
-    const result = await db.getAllAsync(query, params) as Pessoa[];
-    return result.map(p => ({ ...p, ativo: (p as any).ativo === 1 }));
+        query += ' ORDER BY nome, sobrenome';
+        const result = (await db.getAllAsync(query, params)) as Pessoa[];
+        return result.map(p => ({ ...p, ativo: (p as any).ativo === 1 }));
       } catch (fallbackError) {
         console.error('❌ Erro no fallback:', fallbackError);
         return [];
@@ -951,7 +1014,9 @@ export const supabaseDataService = {
 
     const comum = comuns.find(c => c.id === registro.comum_id);
     const cargoSelecionado = cargos.find(c => c.id === registro.cargo_id);
-    const instrumento = registro.instrumento_id ? instrumentos.find(i => i.id === registro.instrumento_id) : null;
+    const instrumento = registro.instrumento_id
+      ? instrumentos.find(i => i.id === registro.instrumento_id)
+      : null;
 
     if (!comum || !cargoSelecionado) {
       throw new Error('Dados incompletos: comum ou cargo não encontrados');
@@ -962,7 +1027,7 @@ export const supabaseDataService = {
     let nomeCompleto = '';
     let cargoReal = cargoSelecionado.nome;
     let pessoa: Pessoa | null = null;
-    
+
     if (isNomeManual) {
       // Extrair nome do pessoa_id (remove prefixo "manual_")
       nomeCompleto = registro.pessoa_id.replace(/^manual_/, '');
@@ -970,7 +1035,11 @@ export const supabaseDataService = {
       cargoReal = cargoSelecionado.nome;
     } else {
       // Buscar pessoa pelo ID (precisamos buscar da lista de pessoas carregadas)
-      const pessoas = await this.getPessoasFromLocal(registro.comum_id, registro.cargo_id, registro.instrumento_id || undefined);
+      const pessoas = await this.getPessoasFromLocal(
+        registro.comum_id,
+        registro.cargo_id,
+        registro.instrumento_id || undefined
+      );
       pessoa = pessoas.find(p => p.id === registro.pessoa_id) || null;
 
       if (!pessoa) {
@@ -981,13 +1050,15 @@ export const supabaseDataService = {
       cargoReal = pessoa.cargo_real || cargoSelecionado.nome;
       nomeCompleto = pessoa.nome_completo || `${pessoa.nome} ${pessoa.sobrenome}`;
     }
-    
+
     const cargo = { ...cargoSelecionado, nome: cargoReal };
 
     // Gerar UUID v4 válido para Supabase
-    const uuid = registro.id && registro.id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i) 
-      ? registro.id 
-      : uuidv4();
+    const uuid =
+      registro.id &&
+      registro.id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)
+        ? registro.id
+        : uuidv4();
 
     // Buscar cidade da pessoa (se disponível)
     const cidade = isNomeManual ? '' : (pessoa as any)?.cidade || '';
@@ -1019,16 +1090,18 @@ export const supabaseDataService = {
     // Usar valores normalizados se for cargo feminino
     const instrumentoFinal = normalizacao.isNormalizado
       ? normalizacao.instrumentoNome || 'ÓRGÃO'
-      : (instrumento?.nome || null);
-    
+      : instrumento?.nome || null;
+
     const naipeInstrumento = normalizacao.isNormalizado
       ? normalizacao.naipeInstrumento || 'TECLADO'
-      : (instrumento?.nome ? getNaipeByInstrumento(instrumento.nome) : null);
-    
+      : instrumento?.nome
+        ? getNaipeByInstrumento(instrumento.nome)
+        : null;
+
     const classeOrganistaFinal = normalizacao.isNormalizado
       ? normalizacao.classeOrganista || 'OFICIALIZADA'
-      : (registro.classe_organista || null);
-    
+      : registro.classe_organista || null;
+
     // Converter para formato da tabela presencas (nomes em maiúscula)
     const row = {
       uuid: uuid,
@@ -1045,7 +1118,10 @@ export const supabaseDataService = {
         // Extrair apenas primeiro e último nome do usuário
         const nomeUsuario = registro.usuario_responsavel || '';
         if (!nomeUsuario) return null;
-        const partesNome = nomeUsuario.trim().split(' ').filter(p => p.trim());
+        const partesNome = nomeUsuario
+          .trim()
+          .split(' ')
+          .filter(p => p.trim());
         if (partesNome.length > 1) {
           return `${partesNome[0]} ${partesNome[partesNome.length - 1]}`;
         }
@@ -1061,13 +1137,17 @@ export const supabaseDataService = {
       const nomeBusca = row.nome_completo.trim().toUpperCase();
       const comumBusca = row.comum.trim().toUpperCase();
       const cargoBusca = row.cargo.trim().toUpperCase(); // Cargo REAL já está em row.cargo
-      
+
       // Extrair apenas a data (sem hora) para comparação
       const dataRegistro = new Date(row.data_ensaio);
-      const dataInicio = new Date(dataRegistro.getFullYear(), dataRegistro.getMonth(), dataRegistro.getDate());
+      const dataInicio = new Date(
+        dataRegistro.getFullYear(),
+        dataRegistro.getMonth(),
+        dataRegistro.getDate()
+      );
       const dataFim = new Date(dataInicio);
       dataFim.setDate(dataFim.getDate() + 1);
-      
+
       console.log('🔍 Verificando duplicados:', {
         nome: nomeBusca,
         comum: comumBusca,
@@ -1098,22 +1178,24 @@ export const supabaseDataService = {
           dataExistente: duplicata.data_ensaio,
           created_at: duplicata.created_at,
         });
-        
+
         // Formatar data e horário do registro existente
         const dataExistente = new Date(duplicata.data_ensaio || duplicata.created_at);
-        const dataFormatada = dataExistente.toLocaleDateString('pt-BR', { 
-          day: '2-digit', 
-          month: '2-digit', 
-          year: 'numeric' 
+        const dataFormatada = dataExistente.toLocaleDateString('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
         });
-        const horarioFormatado = dataExistente.toLocaleTimeString('pt-BR', { 
-          hour: '2-digit', 
-          minute: '2-digit', 
-          second: '2-digit' 
+        const horarioFormatado = dataExistente.toLocaleTimeString('pt-BR', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
         });
-        
+
         // Lançar erro para bloquear inserção com informações formatadas
-        throw new Error(`DUPLICATA_BLOQUEADA:DUPLICATA:${nomeBusca}|${comumBusca}|${dataFormatada}|${horarioFormatado}`);
+        throw new Error(
+          `DUPLICATA_BLOQUEADA:DUPLICATA:${nomeBusca}|${comumBusca}|${dataFormatada}|${horarioFormatado}`
+        );
       }
     } catch (error) {
       // Se o erro for de duplicata bloqueada, propagar o erro
@@ -1127,11 +1209,7 @@ export const supabaseDataService = {
 
     console.log('📤 Enviando para Supabase (tabela presencas):', row);
 
-    const { data, error } = await supabase
-      .from('presencas')
-      .insert(row)
-      .select()
-      .single();
+    const { data, error } = await supabase.from('presencas').insert(row).select().single();
 
     if (error) {
       console.error('❌ Erro ao inserir no Supabase:', error);
@@ -1166,13 +1244,16 @@ export const supabaseDataService = {
       }
       return [];
     }
-    
+
     // Para mobile, usar SQLite
     const db = await getDatabase();
-    const result = await db.getAllAsync(
+    const result = (await db.getAllAsync(
       "SELECT * FROM registros_presenca WHERE status_sincronizacao = 'pending' ORDER BY created_at"
-    ) as RegistroPresenca[];
-    return result.map(r => ({ ...r, status_sincronizacao: r.status_sincronizacao as 'pending' | 'synced' }));
+    )) as RegistroPresenca[];
+    return result.map(r => ({
+      ...r,
+      status_sincronizacao: r.status_sincronizacao as 'pending' | 'synced',
+    }));
   },
 
   async getAllRegistrosFromLocal(): Promise<RegistroPresenca[]> {
@@ -1193,13 +1274,16 @@ export const supabaseDataService = {
       }
       return [];
     }
-    
+
     // Para mobile, usar SQLite
     const db = await getDatabase();
-    const result = await db.getAllAsync(
-      "SELECT * FROM registros_presenca ORDER BY created_at"
-    ) as RegistroPresenca[];
-    return result.map(r => ({ ...r, status_sincronizacao: r.status_sincronizacao as 'pending' | 'synced' }));
+    const result = (await db.getAllAsync(
+      'SELECT * FROM registros_presenca ORDER BY created_at'
+    )) as RegistroPresenca[];
+    return result.map(r => ({
+      ...r,
+      status_sincronizacao: r.status_sincronizacao as 'pending' | 'synced',
+    }));
   },
 
   async deleteRegistroFromLocal(id: string): Promise<void> {
@@ -1213,13 +1297,10 @@ export const supabaseDataService = {
       }
       return;
     }
-    
+
     // Para mobile, usar SQLite
     const db = await getDatabase();
-    await db.runAsync(
-      "DELETE FROM registros_presenca WHERE id = ?",
-      [id]
-    );
+    await db.runAsync('DELETE FROM registros_presenca WHERE id = ?', [id]);
   },
 
   async saveRegistroToLocal(registro: RegistroPresenca): Promise<void> {
@@ -1240,7 +1321,7 @@ export const supabaseDataService = {
       } else {
         memoryCache.registros.push(registroCompleto);
       }
-      
+
       try {
         await AsyncStorage.setItem('cached_registros', JSON.stringify(memoryCache.registros));
       } catch (error) {
@@ -1297,9 +1378,9 @@ export const supabaseDataService = {
 
   async countRegistrosPendentes(): Promise<number> {
     const db = await getDatabase();
-    const result = await db.getFirstAsync(
+    const result = (await db.getFirstAsync(
       "SELECT COUNT(*) as count FROM registros_presenca WHERE status_sincronizacao = 'pending'"
-    ) as { count: number } | null;
+    )) as { count: number } | null;
     return result?.count || 0;
   },
 
@@ -1323,4 +1404,3 @@ export const supabaseDataService = {
     return comumCompleto.trim();
   },
 };
-

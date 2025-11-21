@@ -46,15 +46,21 @@ export interface AuthSession {
 }
 
 export const authService = {
-  async signUp(email: string, password: string, nome?: string): Promise<{ user: Usuario | null; error: Error | null }> {
+  async signUp(
+    email: string,
+    password: string,
+    nome?: string
+  ): Promise<{ user: Usuario | null; error: Error | null }> {
     if (!isSupabaseConfigured() || !supabase) {
-        console.error('❌ Supabase não configurado no signUp');
-        return {
-          user: null,
-          error: new Error('Supabase não está configurado. Configure as variáveis de ambiente SUPABASE_URL e SUPABASE_ANON_KEY.'),
-        };
-      }
-    
+      console.error('❌ Supabase não configurado no signUp');
+      return {
+        user: null,
+        error: new Error(
+          'Supabase não está configurado. Configure as variáveis de ambiente SUPABASE_URL e SUPABASE_ANON_KEY.'
+        ),
+      };
+    }
+
     try {
       console.log('🔐 Chamando supabase.auth.signUp...');
       const { data, error } = await supabase.auth.signUp({
@@ -68,10 +74,10 @@ export const authService = {
         },
       });
 
-      console.log('📡 Resposta do Supabase:', { 
-        hasUser: !!data.user, 
-        hasSession: !!data.session, 
-        error: error?.message 
+      console.log('📡 Resposta do Supabase:', {
+        hasUser: !!data.user,
+        hasSession: !!data.session,
+        error: error?.message,
       });
 
       if (error) {
@@ -82,9 +88,9 @@ export const authService = {
       // Se não há erro mas também não há user, pode ser que o email precise ser confirmado
       if (!data.user) {
         console.warn('⚠️ Usuário criado mas precisa confirmar email');
-        return { 
-          user: null, 
-          error: new Error('Um email de confirmação foi enviado. Verifique sua caixa de entrada.') 
+        return {
+          user: null,
+          error: new Error('Um email de confirmação foi enviado. Verifique sua caixa de entrada.'),
         };
       }
 
@@ -92,19 +98,20 @@ export const authService = {
         console.log('✅ Usuário criado com sucesso:', data.user.id);
         console.log('📝 Nome recebido no signUp:', nome);
         console.log('📋 Metadados do usuário:', data.user.user_metadata);
-        
+
         // Priorizar o nome passado como parâmetro, depois metadados, depois email
-        const nomeFinal = nome || 
-                         data.user.user_metadata?.nome || 
-                         data.user.user_metadata?.full_name ||
-                         data.user.user_metadata?.name ||
-                         undefined;
-        
+        const nomeFinal =
+          nome ||
+          data.user.user_metadata?.nome ||
+          data.user.user_metadata?.full_name ||
+          data.user.user_metadata?.name ||
+          undefined;
+
         console.log('✅ Nome final a ser salvo:', nomeFinal);
-        
+
         // Aguardar um pouco para garantir que o trigger do Supabase criou o perfil
         await new Promise(resolve => setTimeout(resolve, 500));
-        
+
         // Criar ou atualizar perfil na tabela profiles
         const { profile, error: profileError } = await userProfileService.createOrUpdateProfile(
           data.user.id,
@@ -126,7 +133,7 @@ export const authService = {
 
         // Usar dados do perfil se disponível, senão usar dados do auth
         let user: Usuario;
-        
+
         if (profile) {
           user = userProfileService.profileToUsuario(profile)!;
           console.log('✅ Usuário criado a partir do perfil:', {
@@ -164,14 +171,19 @@ export const authService = {
     }
   },
 
-  async signIn(email: string, password: string): Promise<{ user: Usuario | null; error: Error | null }> {
+  async signIn(
+    email: string,
+    password: string
+  ): Promise<{ user: Usuario | null; error: Error | null }> {
     if (!isSupabaseConfigured() || !supabase) {
       return {
         user: null,
-        error: new Error('Supabase não está configurado. Configure as variáveis de ambiente SUPABASE_URL e SUPABASE_ANON_KEY.'),
+        error: new Error(
+          'Supabase não está configurado. Configure as variáveis de ambiente SUPABASE_URL e SUPABASE_ANON_KEY.'
+        ),
       };
     }
-    
+
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -192,7 +204,7 @@ export const authService = {
 
         // Usar dados do perfil se disponível, senão usar dados do auth
         let user: Usuario;
-        
+
         if (profile) {
           user = userProfileService.profileToUsuario(profile)!;
           console.log('✅ Usuário carregado do perfil:', {
@@ -204,23 +216,24 @@ export const authService = {
           });
         } else {
           // Fallback: usar dados do auth ou metadados
-          const nomeFromMetadata = data.user.user_metadata?.nome || 
-                                  data.user.user_metadata?.full_name ||
-                                  data.user.user_metadata?.name;
-          
+          const nomeFromMetadata =
+            data.user.user_metadata?.nome ||
+            data.user.user_metadata?.full_name ||
+            data.user.user_metadata?.name;
+
           // Normalizar role do metadata também
           let roleFromMetadata = data.user.user_metadata?.role || 'user';
           if (roleFromMetadata) {
             roleFromMetadata = String(roleFromMetadata).toLowerCase().trim();
           }
-          
+
           user = {
             id: data.user.id,
             email: data.user.email || '',
             nome: nomeFromMetadata || undefined,
             role: roleFromMetadata,
           };
-          
+
           console.log('⚠️ Usuário carregado do auth (sem perfil):', {
             id: user.id,
             email: user.email,
@@ -229,7 +242,7 @@ export const authService = {
             roleFromMetadata: data.user.user_metadata?.role,
             isMaster: user.role === 'master' || user.role === 'admin',
           });
-          
+
           // Se não há perfil mas temos sessão, tentar criar/atualizar o perfil
           // Isso garante que o role seja salvo corretamente
           if (data.session) {
@@ -284,19 +297,23 @@ export const authService = {
       if (userStr) {
         try {
           const cachedUser = JSON.parse(userStr);
-          
+
           // Se temos sessão válida, buscar perfil atualizado do Supabase
           const session = await this.getSession();
           if (session && isSupabaseConfigured() && supabase) {
             try {
-              const { data: { user: authUser } } = await supabase.auth.getUser();
+              const {
+                data: { user: authUser },
+              } = await supabase.auth.getUser();
               if (authUser) {
-                const { profile, error: profileError } = await userProfileService.getProfile(authUser.id);
-                
+                const { profile, error: profileError } = await userProfileService.getProfile(
+                  authUser.id
+                );
+
                 if (profileError) {
                   console.warn('Erro ao buscar perfil atualizado:', profileError);
                 }
-                
+
                 if (profile) {
                   const updatedUser = userProfileService.profileToUsuario(profile);
                   if (updatedUser) {
@@ -317,14 +334,14 @@ export const authService = {
               console.warn('Erro ao buscar perfil atualizado, usando cache:', error);
             }
           }
-          
+
           console.log('📦 Usando usuário do cache:', {
             id: cachedUser.id,
             email: cachedUser.email,
             nome: cachedUser.nome,
             role: cachedUser.role,
           });
-          
+
           return cachedUser;
         } catch (parseError) {
           console.warn('Erro ao fazer parse do usuário:', parseError);
@@ -367,7 +384,7 @@ export const authService = {
       expires_at: session.expires_at,
     };
     await secureStore.setItemAsync(SESSION_KEY, JSON.stringify(authSession));
-    
+
     // Configurar o token no cliente Supabase se estiver configurado
     if (isSupabaseConfigured() && supabase) {
       await supabase.auth.setSession({
@@ -381,7 +398,7 @@ export const authService = {
     if (!isSupabaseConfigured() || !supabase) {
       return false;
     }
-    
+
     try {
       const session = await this.getSession();
       if (!session) {
@@ -420,4 +437,3 @@ export const authService = {
     return true;
   },
 };
-

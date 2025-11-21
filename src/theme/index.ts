@@ -50,4 +50,3 @@ export const theme = {
   },
   zIndex: Z_INDEX,
 };
-

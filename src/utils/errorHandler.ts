@@ -20,4 +20,3 @@ export const handleApiError = (error: any): string => {
   }
   return 'Erro ao processar solicitação';
 };
-

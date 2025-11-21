@@ -1,15 +1,7 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Platform,
-  Alert,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useAuthContext } from '../context/AuthContext';
-import { theme } from '../theme';
 import { localStorageService } from '../services/localStorageService';
 import { showToast } from '../utils/toast';
 import { LocalEnsaio } from '../types/models';
@@ -76,19 +68,19 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
     try {
       // Mostrar feedback visual
       showToast.info('Saindo...', 'Encerrando sessão...');
-      
+
       // Se há callback customizado, usar ele
       if (onLogoutPress) {
         onLogoutPress();
         return;
       }
-      
+
       // Executar logout
       await signOut();
-      
+
       // Feedback de sucesso
       showToast.success('Logout realizado', 'Sessão encerrada com sucesso');
-      
+
       // O AppNavigator já vai reagir automaticamente ao estado user mudar para null
       // e mostrar a tela de Login
     } catch (error) {
@@ -100,7 +92,10 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   // Formatar nome do usuário (primeiro e último nome)
   const formatUserName = (name: string | undefined): string => {
     if (!name) return 'Usuário';
-    const parts = name.trim().split(' ').filter(p => p.length > 0);
+    const parts = name
+      .trim()
+      .split(' ')
+      .filter(p => p.length > 0);
     if (parts.length >= 2) {
       return `${parts[0]} ${parts[parts.length - 1]}`;
     }
@@ -120,9 +115,9 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   const userRole = user?.role ? String(user.role).toLowerCase().trim() : 'user';
   const isMaster = userRole === 'master' || userRole === 'admin';
   const userRoleText = isMaster ? 'Administrador' : 'Usuário';
-  
+
   const userName = getUserDisplayName();
-  
+
   // Debug: log do role
   React.useEffect(() => {
     if (user) {
@@ -163,9 +158,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             </View>
             <View style={styles.userProfile}>
               <View style={styles.userAvatar}>
-                <Text style={styles.userAvatarText}>
-                  {userName.charAt(0).toUpperCase()}
-                </Text>
+                <Text style={styles.userAvatarText}>{userName.charAt(0).toUpperCase()}</Text>
               </View>
               <View style={styles.userDetails}>
                 <Text style={styles.userName} numberOfLines={1}>
@@ -199,11 +192,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                 <FontAwesome5 name="cog" size={14} color="#a7b1c2" />
               </TouchableOpacity>
             )}
-            <TouchableOpacity
-              style={styles.actionBtn}
-              onPress={handleLogout}
-              activeOpacity={0.7}
-            >
+            <TouchableOpacity style={styles.actionBtn} onPress={handleLogout} activeOpacity={0.7}>
               <FontAwesome5 name="sign-out-alt" size={14} color="#a7b1c2" />
             </TouchableOpacity>
           </View>
@@ -348,4 +337,3 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 });
-

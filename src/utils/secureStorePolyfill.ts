@@ -41,4 +41,3 @@ const webSecureStore = {
 };
 
 export default webSecureStore;
-

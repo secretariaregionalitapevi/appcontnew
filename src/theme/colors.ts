@@ -13,4 +13,3 @@ export const colors = {
   border: '#E0E0E0',
   disabled: '#BDBDBD',
 };
-

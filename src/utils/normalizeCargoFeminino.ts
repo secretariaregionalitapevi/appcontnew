@@ -8,9 +8,9 @@
  */
 export function isCargoFemininoOrganista(cargoNome: string): boolean {
   if (!cargoNome) return false;
-  
+
   const cargoUpper = cargoNome.toUpperCase().trim();
-  
+
   return (
     cargoUpper === 'ORGANISTA' ||
     cargoUpper === 'INSTRUTORA' ||
@@ -27,15 +27,15 @@ export function isCargoFemininoOrganista(cargoNome: string): boolean {
  */
 export function normalizarClasseOrganista(classe: string | null | undefined): string {
   if (!classe) return '';
-  
+
   let classeNormalizada = classe.trim();
-  
+
   // Remover "(A)" e trocar OFICIALIZADO por OFICIALIZADA
   classeNormalizada = classeNormalizada
     .replace(/\(A\)/g, '') // Remove (A)
     .replace(/OFICIALIZADO/g, 'OFICIALIZADA') // Troca OFICIALIZADO por OFICIALIZADA
     .trim();
-  
+
   return classeNormalizada;
 }
 
@@ -56,7 +56,7 @@ export function normalizarRegistroCargoFeminino(
   isNormalizado: boolean;
 } {
   const isCargoFeminino = isCargoFemininoOrganista(cargoNome);
-  
+
   if (isCargoFeminino) {
     return {
       instrumentoNome: 'ÓRGÃO',
@@ -65,7 +65,7 @@ export function normalizarRegistroCargoFeminino(
       isNormalizado: true,
     };
   }
-  
+
   // Para outros cargos, retornar valores originais (null se não houver)
   return {
     instrumentoNome: instrumentoNome || null,

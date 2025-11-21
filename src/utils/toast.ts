@@ -15,7 +15,7 @@ const getSwal = (): any => {
   if (Platform.OS !== 'web' || typeof window === 'undefined') {
     return null;
   }
-  
+
   try {
     // Tentar importar SweetAlert2
     const sweetalert2 = require('sweetalert2');
@@ -36,24 +36,25 @@ if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof document !=
     link.rel = 'stylesheet';
     link.href = 'https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css';
     document.head.appendChild(link);
-    
+
     // Carregar fonte Inter do Google Fonts
     const fontLink = document.createElement('link');
     fontLink.rel = 'preconnect';
     fontLink.href = 'https://fonts.googleapis.com';
     document.head.appendChild(fontLink);
-    
+
     const fontLink2 = document.createElement('link');
     fontLink2.rel = 'preconnect';
     fontLink2.href = 'https://fonts.gstatic.com';
     fontLink2.crossOrigin = 'anonymous';
     document.head.appendChild(fontLink2);
-    
+
     const fontStyle = document.createElement('link');
-    fontStyle.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap';
+    fontStyle.href =
+      'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap';
     fontStyle.rel = 'stylesheet';
     document.head.appendChild(fontStyle);
-    
+
     // Adicionar estilos customizados para SweetAlert2
     const customStyle = document.createElement('style');
     customStyle.id = 'sweetalert2-custom-styles';
@@ -218,4 +219,3 @@ export const showToast = {
     }
   },
 };
-

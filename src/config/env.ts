@@ -8,11 +8,11 @@ const getEnvVar = (key: string, defaultValue?: string): string => {
     process.env[key] ||
     defaultValue ||
     '';
-  
+
   if (!value && __DEV__) {
     console.warn(`⚠️ Missing environment variable: ${key}. Using default or empty value.`);
   }
-  
+
   return value;
 };
 
@@ -21,4 +21,3 @@ export const env = {
   SUPABASE_ANON_KEY: getEnvVar('SUPABASE_ANON_KEY', ''),
   SHEETS_ENDPOINT_URL: getEnvVar('SHEETS_ENDPOINT_URL', ''),
 };
-

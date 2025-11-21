@@ -34,7 +34,7 @@ export const EditRegistrosScreen: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      
+
       // Carregar dados de referência
       const [comunsData, cargosData, instrumentosData, pessoasData] = await Promise.all([
         supabaseDataService.fetchComuns(),
@@ -42,12 +42,12 @@ export const EditRegistrosScreen: React.FC = () => {
         supabaseDataService.fetchInstrumentos(),
         supabaseDataService.fetchPessoas(),
       ]);
-      
+
       setComuns(comunsData);
       setCargos(cargosData);
       setInstrumentos(instrumentosData);
       setPessoas(pessoasData);
-      
+
       // Carregar registros pendentes do banco local
       const registrosData = await supabaseDataService.getRegistrosPendentesFromLocal();
       setRegistros(registrosData);
@@ -69,7 +69,7 @@ export const EditRegistrosScreen: React.FC = () => {
     try {
       const db = await getDatabase();
       await db.runAsync('DELETE FROM registros_presenca WHERE id = ?', [id]);
-      
+
       showToast.success('Registro removido', 'O registro foi removido com sucesso');
       await loadData();
     } catch (error) {
@@ -130,9 +130,7 @@ export const EditRegistrosScreen: React.FC = () => {
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <View style={styles.card}>
           <View style={styles.cardHeader}>
@@ -146,19 +144,15 @@ export const EditRegistrosScreen: React.FC = () => {
             <View style={styles.emptyContainer}>
               <FontAwesome5 name="check-circle" size={48} color={theme.colors.textSecondary} />
               <Text style={styles.emptyText}>Nenhum registro pendente</Text>
-              <Text style={styles.emptySubtext}>
-                Todos os registros foram sincronizados
-              </Text>
+              <Text style={styles.emptySubtext}>Todos os registros foram sincronizados</Text>
             </View>
           ) : (
             <View style={styles.registrosList}>
-              {registros.map((registro) => (
+              {registros.map(registro => (
                 <View key={registro.id} style={styles.registroItem}>
                   <View style={styles.registroContent}>
                     <View style={styles.registroHeader}>
-                      <Text style={styles.registroNome}>
-                        {getNomePessoa(registro.pessoa_id)}
-                      </Text>
+                      <Text style={styles.registroNome}>{getNomePessoa(registro.pessoa_id)}</Text>
                       <TouchableOpacity
                         style={styles.deleteButton}
                         onPress={() => handleDeleteRegistro(registro.id!)}
@@ -166,22 +160,22 @@ export const EditRegistrosScreen: React.FC = () => {
                         <FontAwesome5 name="trash" size={14} color={theme.colors.error} />
                       </TouchableOpacity>
                     </View>
-                    
+
                     <View style={styles.registroDetails}>
                       <View style={styles.detailRow}>
                         <FontAwesome5 name="church" size={12} color={theme.colors.textSecondary} />
-                        <Text style={styles.detailText}>
-                          {getNomeComum(registro.comum_id)}
-                        </Text>
+                        <Text style={styles.detailText}>{getNomeComum(registro.comum_id)}</Text>
                       </View>
-                      
+
                       <View style={styles.detailRow}>
-                        <FontAwesome5 name="briefcase" size={12} color={theme.colors.textSecondary} />
-                        <Text style={styles.detailText}>
-                          {getNomeCargo(registro.cargo_id)}
-                        </Text>
+                        <FontAwesome5
+                          name="briefcase"
+                          size={12}
+                          color={theme.colors.textSecondary}
+                        />
+                        <Text style={styles.detailText}>{getNomeCargo(registro.cargo_id)}</Text>
                       </View>
-                      
+
                       {registro.instrumento_id && (
                         <View style={styles.detailRow}>
                           <FontAwesome5 name="music" size={12} color={theme.colors.textSecondary} />
@@ -190,14 +184,16 @@ export const EditRegistrosScreen: React.FC = () => {
                           </Text>
                         </View>
                       )}
-                      
+
                       <View style={styles.detailRow}>
-                        <FontAwesome5 name="map-marker-alt" size={12} color={theme.colors.textSecondary} />
-                        <Text style={styles.detailText}>
-                          {registro.local_ensaio}
-                        </Text>
+                        <FontAwesome5
+                          name="map-marker-alt"
+                          size={12}
+                          color={theme.colors.textSecondary}
+                        />
+                        <Text style={styles.detailText}>{registro.local_ensaio}</Text>
                       </View>
-                      
+
                       <View style={styles.detailRow}>
                         <FontAwesome5 name="clock" size={12} color={theme.colors.textSecondary} />
                         <Text style={styles.detailText}>
@@ -205,12 +201,19 @@ export const EditRegistrosScreen: React.FC = () => {
                         </Text>
                       </View>
                     </View>
-                    
+
                     <View style={styles.statusBadge}>
-                      <View style={[
-                        styles.statusDot,
-                        { backgroundColor: registro.status_sincronizacao === 'synced' ? theme.colors.success : theme.colors.warning }
-                      ]} />
+                      <View
+                        style={[
+                          styles.statusDot,
+                          {
+                            backgroundColor:
+                              registro.status_sincronizacao === 'synced'
+                                ? theme.colors.success
+                                : theme.colors.warning,
+                          },
+                        ]}
+                      />
                       <Text style={styles.statusText}>
                         {registro.status_sincronizacao === 'synced' ? 'Sincronizado' : 'Pendente'}
                       </Text>
@@ -345,4 +348,3 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 });
-

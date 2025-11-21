@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Platform,
   Animated,
+  ViewStyle,
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { theme } from '../theme';
@@ -38,7 +39,7 @@ export const DuplicateModal: React.FC<DuplicateModalProps> = ({
       // Definir valores imediatamente para garantir visibilidade
       scaleAnim.setValue(1);
       opacityAnim.setValue(1);
-      
+
       // Animar suavemente
       Animated.parallel([
         Animated.spring(scaleAnim, {
@@ -67,20 +68,22 @@ export const DuplicateModal: React.FC<DuplicateModalProps> = ({
       onRequestClose={onCancel}
       statusBarTranslucent
     >
-      <Animated.View 
+      <Animated.View
         style={[
-          styles.overlay, 
-          { 
+          styles.overlay,
+          {
             opacity: opacityAnim,
-            ...(Platform.OS === 'web' ? { 
-              zIndex: 999999999,
-              position: 'fixed' as any,
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-            } : {})
-          }
+            ...(Platform.OS === 'web'
+              ? {
+                  zIndex: 999999999,
+                  position: 'fixed' as ViewStyle['position'],
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                }
+              : {}),
+          },
         ]}
       >
         <Animated.View
@@ -104,7 +107,8 @@ export const DuplicateModal: React.FC<DuplicateModalProps> = ({
           {/* Mensagem */}
           <View style={styles.messageContainer}>
             <Text style={styles.message}>
-              <Text style={styles.bold}>{nome}</Text> de <Text style={styles.bold}>{comum}</Text> já foi cadastrado hoje!
+              <Text style={styles.bold}>{nome}</Text> de <Text style={styles.bold}>{comum}</Text> já
+              foi cadastrado hoje!
             </Text>
           </View>
 
@@ -128,20 +132,12 @@ export const DuplicateModal: React.FC<DuplicateModalProps> = ({
 
           {/* Botões */}
           <View style={styles.buttonsContainer}>
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={onCancel}
-              activeOpacity={0.7}
-            >
+            <TouchableOpacity style={styles.cancelButton} onPress={onCancel} activeOpacity={0.7}>
               <FontAwesome5 name="times" size={14} color="#666" />
               <Text style={styles.cancelButtonText}>Cancelar</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.confirmButton}
-              onPress={onConfirm}
-              activeOpacity={0.8}
-            >
+            <TouchableOpacity style={styles.confirmButton} onPress={onConfirm} activeOpacity={0.8}>
               <FontAwesome5 name="check" size={14} color="#fff" />
               <Text style={styles.confirmButtonText}>Cadastrar Mesmo Assim</Text>
             </TouchableOpacity>
@@ -159,9 +155,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: theme.spacing.lg,
-    ...(Platform.OS === 'web' ? {
-      backdropFilter: 'blur(4px)',
-    } : {}),
+    ...(Platform.OS === 'web'
+      ? {
+          backdropFilter: 'blur(4px)',
+        }
+      : {}),
   },
   modal: {
     backgroundColor: '#ffffff',
@@ -170,17 +168,19 @@ const styles = StyleSheet.create({
     maxWidth: 440,
     padding: 0,
     overflow: 'hidden',
-    ...(Platform.OS === 'web' ? {
-      boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 0, 0, 0.05)',
-      position: 'relative' as any,
-      zIndex: 999999999,
-    } : {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.25,
-      shadowRadius: 24,
-      elevation: 20,
-    }),
+    ...(Platform.OS === 'web'
+      ? {
+          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 0, 0, 0.05)',
+          position: 'relative' as ViewStyle['position'],
+          zIndex: 999999999,
+        }
+      : {
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.25,
+          shadowRadius: 24,
+          elevation: 20,
+        }),
   },
   iconContainer: {
     alignItems: 'center',
@@ -194,15 +194,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#ff9800',
     justifyContent: 'center',
     alignItems: 'center',
-    ...(Platform.OS === 'web' ? {
-      boxShadow: '0 4px 12px rgba(255, 152, 0, 0.3)',
-    } : {
-      shadowColor: '#ff9800',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.3,
-      shadowRadius: 8,
-      elevation: 4,
-    }),
+    ...(Platform.OS === 'web'
+      ? {
+          boxShadow: '0 4px 12px rgba(255, 152, 0, 0.3)',
+        }
+      : {
+          shadowColor: '#ff9800',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.3,
+          shadowRadius: 8,
+          elevation: 4,
+        }),
   },
   title: {
     fontSize: 20,
@@ -275,14 +277,16 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#dee2e6',
     minHeight: 40,
-    ...(Platform.OS === 'web' ? {
-      transition: 'all 0.2s ease',
-      cursor: 'pointer',
-      ':hover': {
-        backgroundColor: '#f8f9fa',
-        borderColor: '#adb5bd',
-      },
-    } : {}),
+    ...(Platform.OS === 'web'
+      ? {
+          transition: 'all 0.2s ease',
+          cursor: 'pointer',
+          ':hover': {
+            backgroundColor: '#f8f9fa',
+            borderColor: '#adb5bd',
+          },
+        }
+      : {}),
   },
   cancelButtonText: {
     fontSize: 14,
@@ -300,25 +304,27 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: '#ff9800',
     minHeight: 40,
-    ...(Platform.OS === 'web' ? {
-      boxShadow: '0 2px 8px rgba(255, 152, 0, 0.25)',
-      transition: 'all 0.2s ease',
-      cursor: 'pointer',
-      ':hover': {
-        backgroundColor: '#fb8c00',
-        boxShadow: '0 4px 16px rgba(255, 152, 0, 0.35)',
-        transform: 'translateY(-1px)',
-      },
-      ':active': {
-        transform: 'translateY(0)',
-      },
-    } : {
-      shadowColor: '#ff9800',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.25,
-      shadowRadius: 6,
-      elevation: 4,
-    }),
+    ...(Platform.OS === 'web'
+      ? {
+          boxShadow: '0 2px 8px rgba(255, 152, 0, 0.25)',
+          transition: 'all 0.2s ease',
+          cursor: 'pointer',
+          ':hover': {
+            backgroundColor: '#fb8c00',
+            boxShadow: '0 4px 16px rgba(255, 152, 0, 0.35)',
+            transform: 'translateY(-1px)',
+          },
+          ':active': {
+            transform: 'translateY(0)',
+          },
+        }
+      : {
+          shadowColor: '#ff9800',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.25,
+          shadowRadius: 6,
+          elevation: 4,
+        }),
   },
   confirmButtonText: {
     fontSize: 14,

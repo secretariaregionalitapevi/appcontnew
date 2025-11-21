@@ -27,4 +27,3 @@ export { supabase };
 export const isSupabaseConfigured = (): boolean => {
   return supabase !== null && !!env.SUPABASE_URL && !!env.SUPABASE_ANON_KEY;
 };
-

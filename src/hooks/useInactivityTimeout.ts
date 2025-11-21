@@ -49,11 +49,8 @@ export const useInactivityTimeout = ({
     resetTimeout();
 
     // Listener para mudanças de estado do app
-    const subscription = AppState.addEventListener('change', (nextAppState) => {
-      if (
-        appStateRef.current.match(/inactive|background/) &&
-        nextAppState === 'active'
-      ) {
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (appStateRef.current.match(/inactive|background/) && nextAppState === 'active') {
         // App voltou ao foreground - resetar timeout
         console.log('📱 App voltou ao foreground - resetando timeout');
         resetTimeout();
@@ -63,10 +60,10 @@ export const useInactivityTimeout = ({
 
     // Listener para eventos de interação (apenas web)
     let cleanupWeb: (() => void) | undefined;
-    
+
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
       const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
-      
+
       const handleActivity = () => {
         resetTimeout();
       };
@@ -97,4 +94,3 @@ export const useInactivityTimeout = ({
     resetTimeout,
   };
 };
-

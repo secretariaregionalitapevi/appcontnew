@@ -54,7 +54,7 @@ export const SignUpScreen: React.FC = () => {
     }
 
     console.log('✅ Supabase configurado, iniciando cadastro...');
-    
+
     // Validações
     if (!nomeCompleto.trim() || !email.trim() || !password || !confirmPassword) {
       Alert.alert('Campos obrigatórios', 'Preencha todos os campos obrigatórios.');
@@ -75,28 +75,32 @@ export const SignUpScreen: React.FC = () => {
     try {
       console.log('📝 Tentando criar conta:', { email, nomeCompleto });
       const result = await signUp(email, password, nomeCompleto.trim());
-      console.log('📦 Resultado do signUp:', { 
-        user: result.user ? 'existe' : 'null', 
+      console.log('📦 Resultado do signUp:', {
+        user: result.user ? 'existe' : 'null',
         error: result.error?.message,
-        hasError: !!result.error 
+        hasError: !!result.error,
       });
 
       // Verificar se há erro primeiro
       if (result.error) {
         let errorMessage = 'Ocorreu um erro ao criar sua conta.';
         const errorMsg = result.error.message || '';
-        
-        if (errorMsg.includes('already registered') || 
-            errorMsg.includes('already exists') || 
-            errorMsg.includes('User already registered')) {
+
+        if (
+          errorMsg.includes('already registered') ||
+          errorMsg.includes('already exists') ||
+          errorMsg.includes('User already registered')
+        ) {
           errorMessage = 'Este email já está cadastrado. Tente fazer login ou use outro email.';
         } else if (errorMsg.includes('Invalid email')) {
           errorMessage = 'Por favor, insira um email válido.';
         } else if (errorMsg.includes('Password should be at least')) {
           errorMessage = 'A senha deve ter pelo menos 6 caracteres.';
-        } else if (errorMsg.includes('email de confirmação') || 
-                   errorMsg.includes('confirmation') ||
-                   errorMsg.includes('Verifique sua caixa de entrada')) {
+        } else if (
+          errorMsg.includes('email de confirmação') ||
+          errorMsg.includes('confirmation') ||
+          errorMsg.includes('Verifique sua caixa de entrada')
+        ) {
           // Caso especial: usuário criado mas precisa confirmar email
           showToast.info(
             'Verifique seu email',
@@ -117,10 +121,7 @@ export const SignUpScreen: React.FC = () => {
 
       // Se não há erro e há usuário, sucesso!
       if (result.user) {
-        showToast.success(
-          'Conta criada com sucesso!',
-          `Bem-vindo(a) ao SAC, ${nomeCompleto}!`
-        );
+        showToast.success('Conta criada com sucesso!', `Bem-vindo(a) ao SAC, ${nomeCompleto}!`);
 
         // Aguardar um pouco antes de navegar para dar tempo do usuário ver o toast
         setTimeout(() => {
@@ -131,13 +132,13 @@ export const SignUpScreen: React.FC = () => {
 
       // Caso não tratado: sem erro mas também sem usuário
       console.warn('⚠️ Resultado inesperado:', result);
-      showToast.error(
-        'Erro',
-        'Não foi possível criar a conta. Tente novamente.'
-      );
+      showToast.error('Erro', 'Não foi possível criar a conta. Tente novamente.');
     } catch (error) {
       console.error('Erro no cadastro:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Ocorreu um erro ao criar sua conta. Tente novamente.';
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Ocorreu um erro ao criar sua conta. Tente novamente.';
       showToast.error('Erro', errorMessage);
     } finally {
       setLoading(false);
@@ -149,10 +150,7 @@ export const SignUpScreen: React.FC = () => {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-      >
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <View style={styles.loginWrap}>
           {/* Logo CCB */}
           <View style={styles.logoContainer}>
@@ -160,7 +158,7 @@ export const SignUpScreen: React.FC = () => {
               onPress={() => Linking.openURL('https://congregacaocristanobrasil.org.br/')}
               activeOpacity={0.7}
             >
-              <Image 
+              <Image
                 source={require('../img/logo-ccb-light.png')}
                 style={styles.logo}
                 resizeMode="contain"
@@ -170,14 +168,15 @@ export const SignUpScreen: React.FC = () => {
 
           {/* Título */}
           <Text style={styles.title}>Bem-vindos ao SAC</Text>
-          
+
           {/* Subtítulo */}
           <Text style={styles.leadText}>
-            Sistema Administrativo de Contagem, criado para facilitar a administração Musical da Congregação Cristã no Brasil
+            Sistema Administrativo de Contagem, criado para facilitar a administração Musical da
+            Congregação Cristã no Brasil
             {'\n'}
             <Text style={styles.boldText}>Regional Itapevi</Text>.
           </Text>
-          
+
           <Text style={styles.subText}>Preencha os dados para criar sua conta</Text>
 
           {/* Formulário */}
@@ -276,10 +275,7 @@ export const SignUpScreen: React.FC = () => {
 
             <View style={styles.registerContainer}>
               <Text style={styles.registerText}>Já tem uma conta?</Text>
-              <TouchableOpacity
-                style={styles.registerButton}
-                onPress={() => navigation.goBack()}
-              >
+              <TouchableOpacity style={styles.registerButton} onPress={() => navigation.goBack()}>
                 <Text style={styles.registerButtonText}>Faça login aqui</Text>
               </TouchableOpacity>
             </View>
@@ -442,4 +438,3 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
   },
 });
-
