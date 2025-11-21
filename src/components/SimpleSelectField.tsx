@@ -121,11 +121,14 @@ export const SimpleSelectField: React.FC<SimpleSelectFieldProps> = ({
 
   // Quando o campo perde foco
   const handleBlur = () => {
-    // Delay para permitir clique no item
+    setIsFocused(false);
+    // Delay maior para permitir clique com mouse/touch
+    // Web precisa de mais tempo para processar o clique do mouse
+    const delay = Platform.OS === 'web' ? 200 : Platform.OS === 'android' ? 500 : 300;
     blurTimeoutRef.current = setTimeout(() => {
       setShowList(false);
       blurTimeoutRef.current = null;
-    }, 300);
+    }, delay);
   };
 
   // Quando seleciona um item
@@ -286,7 +289,14 @@ export const SimpleSelectField: React.FC<SimpleSelectFieldProps> = ({
                     selectedIndex === index && styles.itemHighlighted,
                     value === item.id && styles.itemSelected,
                   ]}
-                  onPress={() => handleSelect(item)}
+                  onPress={() => {
+                    // Cancelar blur pendente ao clicar
+                    if (blurTimeoutRef.current) {
+                      clearTimeout(blurTimeoutRef.current);
+                      blurTimeoutRef.current = null;
+                    }
+                    handleSelect(item);
+                  }}
                   activeOpacity={0.7}
                   {...(Platform.OS === 'web'
                     ? {

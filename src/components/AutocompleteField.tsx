@@ -114,11 +114,13 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
   // Quando o campo perde foco
   const handleBlur = () => {
     setIsFocused(false);
-    // Delay para permitir clique no item
+    // Delay maior para permitir clique com mouse/touch
+    // Web precisa de mais tempo para processar o clique do mouse
+    const delay = Platform.OS === 'web' ? 200 : Platform.OS === 'android' ? 500 : 300;
     blurTimeoutRef.current = setTimeout(() => {
       setShowList(false);
       blurTimeoutRef.current = null;
-    }, 300);
+    }, delay);
   };
 
   // Quando seleciona um item
@@ -289,6 +291,11 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
                 <TouchableOpacity
                   style={[styles.item, index === selectedIndex && styles.itemSelected]}
                   onPress={() => {
+                    // Cancelar blur pendente ao clicar
+                    if (blurTimeoutRef.current) {
+                      clearTimeout(blurTimeoutRef.current);
+                      blurTimeoutRef.current = null;
+                    }
                     setSelectedIndex(index);
                     handleSelect(item);
                   }}

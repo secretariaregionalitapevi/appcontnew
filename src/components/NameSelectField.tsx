@@ -88,11 +88,6 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
       return optionsWithManual.slice(-1); // Retornar apenas a opção manual
     }
 
-    // Se não há texto digitado, mostrar todas as opções + opção manual
-    if (!searchText.trim()) {
-      return optionsWithManual;
-    }
-
     // Filtrar opções baseado no texto
     const query = normalize(searchText);
     const filteredOptions = options.filter(opt => {
@@ -100,8 +95,19 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
       return labelNorm.includes(query);
     });
 
-    // Sempre adicionar opção manual no final, mesmo quando filtra
-    return [...filteredOptions, optionsWithManual[optionsWithManual.length - 1]];
+    // Se não há texto digitado, mostrar todas as opções + opção manual no final
+    if (!searchText.trim()) {
+      return optionsWithManual;
+    }
+
+    // Se há resultados filtrados, mostrar apenas eles (sem opção manual sobrepondo)
+    // A opção manual só aparece quando não há resultados ou quando a lista está vazia
+    if (filteredOptions.length > 0) {
+      return filteredOptions;
+    }
+
+    // Se não há resultados filtrados, mostrar apenas a opção manual
+    return optionsWithManual.slice(-1);
   }, [searchText, options, optionsWithManual, isManualMode]);
 
   // Sincronizar searchText com value quando muda externamente
@@ -187,8 +193,9 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
   // Quando o campo perde foco
   const handleBlur = () => {
     setIsFocused(false);
-    // Delay maior no Android para permitir clique no item do Modal
-    const delay = Platform.OS === 'android' ? 500 : 300;
+    // Delay maior para permitir clique com mouse/touch
+    // Web precisa de mais tempo para processar o clique do mouse
+    const delay = Platform.OS === 'android' ? 500 : Platform.OS === 'web' ? 200 : 300;
     blurTimeoutRef.current = setTimeout(() => {
       setShowList(false);
       blurTimeoutRef.current = null;
@@ -426,7 +433,14 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
                                 value === item.id && !isManualOption && styles.itemSelected,
                                 isManualOption && styles.itemManual,
                               ]}
-                              onPress={() => handleSelect(item)}
+                              onPress={() => {
+                                // Cancelar blur pendente ao clicar
+                                if (blurTimeoutRef.current) {
+                                  clearTimeout(blurTimeoutRef.current);
+                                  blurTimeoutRef.current = null;
+                                }
+                                handleSelect(item);
+                              }}
                               activeOpacity={0.7}
                             >
                               <Text
@@ -491,7 +505,14 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
                               value === item.id && !isManualOption && styles.itemSelected,
                               isManualOption && styles.itemManual,
                             ]}
-                            onPress={() => handleSelect(item)}
+                            onPress={() => {
+                              // Cancelar blur pendente ao clicar
+                              if (blurTimeoutRef.current) {
+                                clearTimeout(blurTimeoutRef.current);
+                                blurTimeoutRef.current = null;
+                              }
+                              handleSelect(item);
+                            }}
                             activeOpacity={0.7}
                             {...(Platform.OS === 'web'
                               ? {
