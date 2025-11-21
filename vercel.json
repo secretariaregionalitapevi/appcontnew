@@ -1,6 +1,6 @@
 {
   "buildCommand": "npm run vercel-build",
-  "outputDirectory": "web-build",
+  "outputDirectory": "dist",
   "installCommand": "npm install",
   "framework": null,
   "ignoreCommand": "git diff --quiet HEAD^ HEAD ./",
