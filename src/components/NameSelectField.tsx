@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Platform,
   ViewStyle,
+  Modal,
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { theme } from '../theme';
@@ -147,10 +148,19 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
     }
 
     // Mostrar lista quando há texto ou quando há opções disponíveis
-    if (text.trim().length > 0 || options.length > 0) {
-      setShowList(true);
+    // No Android, mostrar sempre que há opções para melhor UX
+    if (Platform.OS === 'android') {
+      if (options.length > 0) {
+        setShowList(true);
+      } else {
+        setShowList(false);
+      }
     } else {
-      setShowList(false);
+      if (text.trim().length > 0 || options.length > 0) {
+        setShowList(true);
+      } else {
+        setShowList(false);
+      }
     }
   };
 
@@ -168,7 +178,7 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
       return;
     }
 
-    // Mostrar lista se há opções disponíveis
+    // Mostrar lista se há opções disponíveis (Android precisa mostrar imediatamente)
     if (options.length > 0) {
       setShowList(true);
     }
@@ -177,11 +187,12 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
   // Quando o campo perde foco
   const handleBlur = () => {
     setIsFocused(false);
-    // Delay para permitir clique no item
+    // Delay maior no Android para permitir clique no item do Modal
+    const delay = Platform.OS === 'android' ? 500 : 300;
     blurTimeoutRef.current = setTimeout(() => {
       setShowList(false);
       blurTimeoutRef.current = null;
-    }, 300);
+    }, delay);
   };
 
   // Quando seleciona um item
@@ -375,79 +386,149 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
                 : {})}
             />
 
-            {/* Dropdown inline - SEM Modal */}
-            {showList && filtered.length > 0 && (
-              <View
-                style={[
-                  styles.dropdown,
-                  Platform.OS === 'web'
-                    ? {
-                        zIndex: dropdownZIndex,
-                      }
-                    : {},
-                ]}
+            {/* Dropdown - Modal no Android, inline no Web */}
+            {Platform.OS === 'android' ? (
+              <Modal
+                visible={showList && (filtered.length > 0 || searchText.trim().length > 0)}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowList(false)}
               >
-                <FlatList
-                  ref={flatListRef}
-                  data={filtered}
-                  keyExtractor={item => item.id}
-                  renderItem={({ item, index }) => {
-                    const isManualOption = item.id === MANUAL_INPUT_OPTION_ID;
-                    return (
-                      <TouchableOpacity
-                        style={[
-                          styles.item,
-                          selectedIndex === index && styles.itemHighlighted,
-                          value === item.id && !isManualOption && styles.itemSelected,
-                          isManualOption && styles.itemManual,
-                        ]}
-                        onPress={() => handleSelect(item)}
-                        activeOpacity={0.7}
-                        {...(Platform.OS === 'web'
-                          ? {
-                              onMouseEnter: () => setSelectedIndex(index),
-                              onMouseLeave: () => setSelectedIndex(-1),
-                            }
-                          : {})}
-                      >
-                        <Text
-                          style={[
-                            styles.itemText,
-                            value === item.id && !isManualOption && styles.itemTextSelected,
-                            isManualOption && styles.itemTextManual,
-                          ]}
-                          numberOfLines={1}
-                        >
-                          {item.label}
-                        </Text>
-                        {value === item.id && !isManualOption && (
-                          <FontAwesome5
-                            name="check"
-                            size={12}
-                            color={theme.colors.primary}
-                            style={styles.checkIcon}
-                          />
-                        )}
-                      </TouchableOpacity>
-                    );
-                  }}
-                  style={styles.list}
-                  nestedScrollEnabled
-                  keyboardShouldPersistTaps="handled"
-                  initialNumToRender={10}
-                  maxToRenderPerBatch={10}
-                  windowSize={5}
-                />
-              </View>
-            )}
+                <TouchableOpacity
+                  style={styles.modalOverlay}
+                  activeOpacity={1}
+                  onPress={() => setShowList(false)}
+                >
+                  <View style={styles.modalContent}>
+                    {filtered.length > 0 ? (
+                      <FlatList
+                        ref={flatListRef}
+                        data={filtered}
+                        keyExtractor={item => item.id}
+                        renderItem={({ item, index }) => {
+                          const isManualOption = item.id === MANUAL_INPUT_OPTION_ID;
+                          return (
+                            <TouchableOpacity
+                              style={[
+                                styles.item,
+                                selectedIndex === index && styles.itemHighlighted,
+                                value === item.id && !isManualOption && styles.itemSelected,
+                                isManualOption && styles.itemManual,
+                              ]}
+                              onPress={() => handleSelect(item)}
+                              activeOpacity={0.7}
+                            >
+                              <Text
+                                style={[
+                                  styles.itemText,
+                                  value === item.id && !isManualOption && styles.itemTextSelected,
+                                  isManualOption && styles.itemTextManual,
+                                ]}
+                                numberOfLines={1}
+                              >
+                                {item.label}
+                              </Text>
+                              {value === item.id && !isManualOption && (
+                                <FontAwesome5
+                                  name="check"
+                                  size={12}
+                                  color={theme.colors.primary}
+                                  style={styles.checkIcon}
+                                />
+                              )}
+                            </TouchableOpacity>
+                          );
+                        }}
+                        style={styles.list}
+                        keyboardShouldPersistTaps="handled"
+                        initialNumToRender={10}
+                        maxToRenderPerBatch={10}
+                        windowSize={5}
+                      />
+                    ) : (
+                      <View style={styles.emptyContainer}>
+                        <Text style={styles.emptyText}>Nenhum resultado encontrado</Text>
+                      </View>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              </Modal>
+            ) : (
+              <>
+                {showList && filtered.length > 0 && (
+                  <View
+                    style={[
+                      styles.dropdown,
+                      Platform.OS === 'web'
+                        ? {
+                            zIndex: dropdownZIndex,
+                          }
+                        : {},
+                    ]}
+                  >
+                    <FlatList
+                      ref={flatListRef}
+                      data={filtered}
+                      keyExtractor={item => item.id}
+                      renderItem={({ item, index }) => {
+                        const isManualOption = item.id === MANUAL_INPUT_OPTION_ID;
+                        return (
+                          <TouchableOpacity
+                            style={[
+                              styles.item,
+                              selectedIndex === index && styles.itemHighlighted,
+                              value === item.id && !isManualOption && styles.itemSelected,
+                              isManualOption && styles.itemManual,
+                            ]}
+                            onPress={() => handleSelect(item)}
+                            activeOpacity={0.7}
+                            {...(Platform.OS === 'web'
+                              ? {
+                                  onMouseEnter: () => setSelectedIndex(index),
+                                  onMouseLeave: () => setSelectedIndex(-1),
+                                }
+                              : {})}
+                          >
+                            <Text
+                              style={[
+                                styles.itemText,
+                                value === item.id && !isManualOption && styles.itemTextSelected,
+                                isManualOption && styles.itemTextManual,
+                              ]}
+                              numberOfLines={1}
+                            >
+                              {item.label}
+                            </Text>
+                            {value === item.id && !isManualOption && (
+                              <FontAwesome5
+                                name="check"
+                                size={12}
+                                color={theme.colors.primary}
+                                style={styles.checkIcon}
+                              />
+                            )}
+                          </TouchableOpacity>
+                        );
+                      }}
+                      style={styles.list}
+                      nestedScrollEnabled
+                      keyboardShouldPersistTaps="handled"
+                      initialNumToRender={10}
+                      maxToRenderPerBatch={10}
+                      windowSize={5}
+                    />
+                  </View>
+                )}
 
-            {/* Mensagem quando não há resultados */}
-            {showList && filtered.length === 0 && searchText.trim().length > 0 && (
-              <View style={styles.dropdown}>
-                <View style={styles.emptyContainer}>
-                  <Text style={styles.emptyText}>Nenhum resultado encontrado</Text>
-                </View>
-              </View>
+                {/* Mensagem quando não há resultados */}
+                {showList && filtered.length === 0 && searchText.trim().length > 0 && (
+                  <View style={styles.dropdown}>
+                    <View style={styles.emptyContainer}>
+                      <Text style={styles.emptyText}>Nenhum resultado encontrado</Text>
+                    </View>
+                  </View>
+                )}
+              </>
             )}
           </>
         )}
@@ -620,5 +701,24 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.md,
     color: theme.colors.textSecondary,
     fontStyle: 'italic',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-start',
+    paddingTop: 100,
+  },
+  modalContent: {
+    backgroundColor: '#ffffff',
+    marginHorizontal: 20,
+    borderRadius: theme.borderRadius.md,
+    maxHeight: 400,
+    borderWidth: 1.5,
+    borderColor: theme.colors.primary,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 15,
   },
 });
