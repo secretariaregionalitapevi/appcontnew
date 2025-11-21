@@ -11,8 +11,8 @@
     "ios": "expo start --ios --host lan",
     "ios:clean": "powershell -ExecutionPolicy Bypass -File ./start-ios.ps1",
     "web": "expo start --web",
-    "build": "expo export:web",
-    "vercel-build": "expo export:web",
+    "build": "npx expo export:web",
+    "vercel-build": "npx expo export:web",
     "lint": "eslint . --ext .ts,.tsx",
     "test": "jest"
   },
