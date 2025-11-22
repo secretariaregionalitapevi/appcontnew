@@ -918,23 +918,22 @@ export const supabaseDataService = {
 
   // Buscar candidatos da tabela candidatos (seguindo lógica similar ao cadastro)
   async fetchCandidatosFromSupabase(
-    comumNome?: string
+    comumNome?: string,
+    nomeBusca?: string
   ): Promise<any[]> {
     if (!isSupabaseConfigured() || !supabase) {
       throw new Error('Supabase não está configurado');
     }
 
-    if (!comumNome) {
-      return [];
-    }
-
     try {
       console.log('📚 Buscando candidatos da tabela candidatos:', {
         comumNome,
+        nomeBusca,
       });
 
-      // Normalizar valores para busca
-      const comumBusca = comumNome.trim();
+      // Normalizar valores para busca (remover acentos, espaços extras, etc)
+      const comumBusca = comumNome ? normalizeForSearch(comumNome.trim()) : '';
+      const nomeBuscaNormalizado = nomeBusca ? normalizeForSearch(nomeBusca.trim()) : '';
 
       // Usar tabela candidatos
       const tableName = 'candidatos';
@@ -951,12 +950,23 @@ export const supabaseDataService = {
         const from = page * pageSize;
         const to = from + pageSize - 1;
 
-        // Construir query base com filtro de comum
+        // Construir query base
         let query = supabase
           .from(table)
-          .select('nome, comum, cidade')
-          .ilike('comum', `%${comumBusca}%`)
+          .select('nome, comum, cidade, instrumento')
           .order('nome', { ascending: true });
+
+        // Aplicar filtros de busca
+        if (comumBusca) {
+          // Buscar por comum - usar ilike para busca flexível (case-insensitive)
+          // Tentar tanto o nome normalizado quanto o original
+          query = query.ilike('comum', `%${comumBusca}%`);
+        }
+
+        if (nomeBuscaNormalizado) {
+          // Buscar por nome também
+          query = query.ilike('nome', `%${nomeBuscaNormalizado}%`);
+        }
 
         // Aplicar range para paginação
         const result = await query.range(from, to);
