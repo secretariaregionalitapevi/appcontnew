@@ -185,8 +185,19 @@ export const offlineSyncService = {
             }
           }
         }
+      } catch (error) {
+        console.error(`❌ Erro ao processar registro ${registro.id}:`, error);
+      }
+        })
+      );
+      
+      // Pequena pausa entre lotes para não sobrecarregar
+      if (i + batchSize < registros.length) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
 
-        // Pausa entre envios para evitar sobrecarga
+        // Pausa entre envios para evitar sobrecarga (removido - agora processa em lotes)
         if (registros.indexOf(registro) < registros.length - 1) {
           await new Promise(resolve => setTimeout(resolve, 500));
         }
