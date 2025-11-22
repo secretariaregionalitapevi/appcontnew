@@ -1072,30 +1072,46 @@ export const supabaseDataService = {
       try {
         const candidatosData = await this.fetchCandidatosFromSupabase(comumNome);
 
+        // Buscar instrumentos uma vez para mapear nomes para IDs
+        const instrumentos = await this.getInstrumentosFromLocal();
+
         // Converter para formato Pessoa[]
-        const pessoas: Pessoa[] = candidatosData.map((p, index) => {
-          const nomeCompleto = (p.nome || '').trim();
-          const partesNome = nomeCompleto.split(' ').filter(p => p.trim());
-          const primeiroNome = partesNome[0] || '';
-          const ultimoNome = partesNome.length > 1 ? partesNome[partesNome.length - 1] : '';
+        const pessoas: Pessoa[] = await Promise.all(
+          candidatosData.map(async (p, index) => {
+            const nomeCompleto = (p.nome || '').trim();
+            const partesNome = nomeCompleto.split(' ').filter(p => p.trim());
+            const primeiroNome = partesNome[0] || '';
+            const ultimoNome = partesNome.length > 1 ? partesNome[partesNome.length - 1] : '';
 
-          const pessoa: Pessoa = {
-            id: `candidato_${index}_${nomeCompleto.toLowerCase().replace(/\s+/g, '_')}`,
-            nome: primeiroNome,
-            sobrenome: ultimoNome,
-            nome_completo: nomeCompleto,
-            comum_id: comumId || '',
-            cargo_id: cargoId || '',
-            cargo_real: 'Candidato(a)', // Cargo fixo para candidatos
-            instrumento_id: null, // Candidatos não têm instrumento
-            cidade: (p.cidade || '').toUpperCase().trim(),
-            ativo: true,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          };
+            // Tentar encontrar o ID do instrumento pelo nome (se existir)
+            let instrumentoId: string | null = null;
+            if (p.instrumento) {
+              const instrumentoEncontrado = instrumentos.find(
+                i => i.nome.toUpperCase() === (p.instrumento || '').toUpperCase().trim()
+              );
+              if (instrumentoEncontrado) {
+                instrumentoId = instrumentoEncontrado.id;
+              }
+            }
 
-          return pessoa;
-        });
+            const pessoa: Pessoa = {
+              id: `candidato_${index}_${nomeCompleto.toLowerCase().replace(/\s+/g, '_')}`,
+              nome: primeiroNome,
+              sobrenome: ultimoNome,
+              nome_completo: nomeCompleto,
+              comum_id: comumId || '',
+              cargo_id: cargoId || '',
+              cargo_real: 'Candidato(a)', // Cargo fixo para candidatos
+              instrumento_id: instrumentoId, // Incluir instrumento se existir
+              cidade: (p.cidade || '').toUpperCase().trim(),
+              ativo: true,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            };
+
+            return pessoa;
+          })
+        );
 
         return pessoas;
       } catch (error) {
