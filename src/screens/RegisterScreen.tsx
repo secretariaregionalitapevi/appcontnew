@@ -1163,12 +1163,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
     overflow: 'visible' as const,
-    ...(Platform.OS === 'web'
-      ? {
-          position: 'relative' as const,
-          zIndex: 1,
-        }
-      : {}),
+    // SEM z-index no card para não interferir com os campos
   },
   cardHeader: {
     backgroundColor: theme.colors.surface,

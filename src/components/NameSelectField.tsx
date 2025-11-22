@@ -269,9 +269,11 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
   }, []);
 
   // Z-index DINÂMICO baseado no foco - campo ativo sempre acima
-  const baseZIndex = Platform.OS === 'web' ? 1000 : 1; // Z-index base para campos não focados
-  const focusedZIndex = Platform.OS === 'web' ? 9999999 : 10000; // Z-index muito alto para campo focado
-  const dropdownZIndex = Platform.OS === 'web' ? 99999999 : 10001; // Z-index ainda mais alto para dropdown do campo focado
+  // Z-index DINÂMICO baseado no foco - campo ativo sempre acima
+  // Valores extremos para garantir que campo focado SEMPRE fique acima de tudo
+  const baseZIndex = Platform.OS === 'web' ? 1 : 1; // Z-index base muito baixo para campos não focados
+  const focusedZIndex = Platform.OS === 'web' ? 2147483647 : 10000; // Z-index máximo possível (2147483647 = max int32) para campo focado
+  const dropdownZIndex = Platform.OS === 'web' ? 2147483647 : 10001; // Z-index máximo para dropdown do campo focado
   
   const containerZIndex = isFocused ? focusedZIndex : baseZIndex;
   const inputZIndex = isFocused ? focusedZIndex : baseZIndex;
@@ -520,7 +522,10 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
                         zIndex: dropdownZIndex,
                         position: 'absolute' as ViewStyle['position'],
                       }
-                    : {},
+                    : {
+                        zIndex: dropdownZIndex,
+                        elevation: 1000, // Elevation alto no Android
+                      },
                 ]}
                     onStartShouldSetResponder={() => true}
                     onMoveShouldSetResponder={() => true}
