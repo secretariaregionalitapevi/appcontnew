@@ -97,13 +97,20 @@ export const offlineSyncService = {
 
     let successCount = 0;
     const totalCount = registros.length;
-
-    for (const registro of registros) {
-      try {
-        // 🚀 FLUXO OTIMIZADO: Google Sheets PRIMEIRO (como backupcont)
-        // 1. Enviar para Google Sheets PRIMEIRO
-        console.log(`📤 Enviando registro ${registro.id} para Google Sheets...`);
-        const sheetsResult = await googleSheetsService.sendRegistroToSheet(registro);
+    
+    // Processar em lotes de 5 para não travar a UI
+    const batchSize = 5;
+    for (let i = 0; i < registros.length; i += batchSize) {
+      const batch = registros.slice(i, i + batchSize);
+      
+      // Processar lote em paralelo (mas limitado)
+      await Promise.all(
+        batch.map(async (registro) => {
+          try {
+            // 🚀 FLUXO OTIMIZADO: Google Sheets PRIMEIRO (como backupcont)
+            // 1. Enviar para Google Sheets PRIMEIRO
+            console.log(`📤 Enviando registro ${registro.id} para Google Sheets...`);
+            const sheetsResult = await googleSheetsService.sendRegistroToSheet(registro);
         
         if (sheetsResult.success) {
           console.log(`✅ Registro ${registro.id} enviado para Google Sheets`);

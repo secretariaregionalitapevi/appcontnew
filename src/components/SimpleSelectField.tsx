@@ -7,6 +7,9 @@ import {
   TouchableOpacity,
   StyleSheet,
   Platform,
+  Modal,
+  SafeAreaView,
+  ViewStyle,
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { theme } from '../theme';
@@ -289,94 +292,176 @@ export const SimpleSelectField: React.FC<SimpleSelectFieldProps> = ({
             : {})}
         />
 
-        {/* Dropdown inline - SEM Modal */}
+        {/* Dropdown - Modal no mobile, inline na web */}
         {showList && filtered.length > 0 && (
-          <View
-            style={[
-              styles.dropdown,
-              Platform.OS === 'web'
+          Platform.OS === 'web' ? (
+            <View
+              style={[
+                styles.dropdown,
+                {
+                  zIndex: dropdownZIndex,
+                  position: 'absolute' as ViewStyle['position'],
+                },
+              ]}
+              onStartShouldSetResponder={() => false}
+              onMoveShouldSetResponder={() => false}
+              pointerEvents="box-none"
+              {...(Platform.OS === 'web'
                 ? {
-                    zIndex: dropdownZIndex,
-                    position: 'absolute' as ViewStyle['position'],
-                  }
-                : {
-                    zIndex: dropdownZIndex,
-                    elevation: 1000, // Elevation alto no Android
-                  },
-            ]}
-            onStartShouldSetResponder={() => false}
-            onMoveShouldSetResponder={() => false}
-            pointerEvents="box-none"
-            {...(Platform.OS === 'web'
-              ? {
-                  onMouseEnter: () => {
-                    // Cancelar blur quando mouse entra no dropdown
-                    if (blurTimeoutRef.current) {
-                      clearTimeout(blurTimeoutRef.current);
-                      blurTimeoutRef.current = null;
-                    }
-                  },
-                  onMouseDown: (e: React.MouseEvent) => {
-                    // Cancelar blur ao clicar no dropdown
-                    if (blurTimeoutRef.current) {
-                      clearTimeout(blurTimeoutRef.current);
-                      blurTimeoutRef.current = null;
-                    }
-                  },
-                }
-              : {})}
-          >
-            <FlatList
-              ref={flatListRef}
-              data={filtered}
-              keyExtractor={item => item.id}
-              renderItem={({ item, index }) => (
-                <TouchableOpacity
-                  style={[
-                    styles.item,
-                    selectedIndex === index && styles.itemHighlighted,
-                    value === item.id && styles.itemSelected,
-                  ]}
-                  onPress={() => {
-                    // Cancelar blur pendente ao clicar
-                    if (blurTimeoutRef.current) {
-                      clearTimeout(blurTimeoutRef.current);
-                      blurTimeoutRef.current = null;
-                    }
-                    handleSelect(item);
-                  }}
-                  activeOpacity={0.7}
-                  {...(Platform.OS === 'web'
-                    ? {
-                        onMouseEnter: () => setSelectedIndex(index),
-                        onMouseLeave: () => setSelectedIndex(-1),
+                    onMouseEnter: () => {
+                      // Cancelar blur quando mouse entra no dropdown
+                      if (blurTimeoutRef.current) {
+                        clearTimeout(blurTimeoutRef.current);
+                        blurTimeoutRef.current = null;
                       }
-                    : {})}
-                >
-                  <Text
-                    style={[styles.itemText, value === item.id && styles.itemTextSelected]}
-                    numberOfLines={1}
+                    },
+                    onMouseDown: (e: React.MouseEvent) => {
+                      // Cancelar blur ao clicar no dropdown
+                      if (blurTimeoutRef.current) {
+                        clearTimeout(blurTimeoutRef.current);
+                        blurTimeoutRef.current = null;
+                      }
+                    },
+                  }
+                : {})}
+            >
+              <FlatList
+                ref={flatListRef}
+                data={filtered}
+                keyExtractor={item => item.id}
+                renderItem={({ item, index }) => (
+                  <TouchableOpacity
+                    style={[
+                      styles.item,
+                      selectedIndex === index && styles.itemHighlighted,
+                      value === item.id && styles.itemSelected,
+                    ]}
+                    onPress={() => {
+                      // Cancelar blur pendente ao clicar
+                      if (blurTimeoutRef.current) {
+                        clearTimeout(blurTimeoutRef.current);
+                        blurTimeoutRef.current = null;
+                      }
+                      handleSelect(item);
+                    }}
+                    activeOpacity={0.7}
+                    {...(Platform.OS === 'web'
+                      ? {
+                          onMouseEnter: () => setSelectedIndex(index),
+                          onMouseLeave: () => setSelectedIndex(-1),
+                        }
+                      : {})}
                   >
-                    {item.label}
-                  </Text>
-                  {value === item.id && (
-                    <FontAwesome5
-                      name="check"
-                      size={12}
-                      color={theme.colors.primary}
-                      style={styles.checkIcon}
+                    <Text
+                      style={[styles.itemText, value === item.id && styles.itemTextSelected]}
+                      numberOfLines={1}
+                    >
+                      {item.label}
+                    </Text>
+                    {value === item.id && (
+                      <FontAwesome5
+                        name="check"
+                        size={12}
+                        color={theme.colors.primary}
+                        style={styles.checkIcon}
+                      />
+                    )}
+                  </TouchableOpacity>
+                )}
+                style={styles.list}
+                nestedScrollEnabled
+                keyboardShouldPersistTaps="handled"
+                initialNumToRender={10}
+                maxToRenderPerBatch={10}
+                windowSize={5}
+              />
+            </View>
+          ) : (
+            <Modal
+              visible={showList}
+              transparent={true}
+              animationType="fade"
+              onRequestClose={() => {
+                setShowList(false);
+                if (inputRef.current) {
+                  inputRef.current.blur();
+                }
+              }}
+            >
+              <TouchableOpacity
+                style={styles.modalOverlay}
+                activeOpacity={1}
+                onPress={() => {
+                  setShowList(false);
+                  if (inputRef.current) {
+                    inputRef.current.blur();
+                  }
+                }}
+              >
+                <SafeAreaView style={styles.modalContainer}>
+                  <View style={styles.modalDropdown}>
+                    <View style={styles.modalHeader}>
+                      <Text style={styles.modalTitle}>{label || 'Selecione uma opção'}</Text>
+                      <TouchableOpacity
+                        onPress={() => {
+                          setShowList(false);
+                          if (inputRef.current) {
+                            inputRef.current.blur();
+                          }
+                        }}
+                        style={styles.modalCloseButton}
+                      >
+                        <FontAwesome5 name="times" size={20} color={theme.colors.text} />
+                      </TouchableOpacity>
+                    </View>
+                    <FlatList
+                      ref={flatListRef}
+                      data={filtered}
+                      keyExtractor={item => item.id}
+                      renderItem={({ item, index }) => (
+                        <TouchableOpacity
+                          style={[
+                            styles.modalItem,
+                            selectedIndex === index && styles.itemHighlighted,
+                            value === item.id && styles.itemSelected,
+                          ]}
+                          onPress={() => {
+                            handleSelect(item);
+                            setShowList(false);
+                            if (inputRef.current) {
+                              inputRef.current.blur();
+                            }
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <Text
+                            style={[styles.modalItemText, value === item.id && styles.itemTextSelected]}
+                            numberOfLines={1}
+                          >
+                            {item.label}
+                          </Text>
+                          {value === item.id && (
+                            <FontAwesome5
+                              name="check"
+                              size={14}
+                              color={theme.colors.primary}
+                              style={styles.checkIcon}
+                            />
+                          )}
+                        </TouchableOpacity>
+                      )}
+                      style={styles.modalList}
+                      keyboardShouldPersistTaps="handled"
+                      initialNumToRender={20}
+                      maxToRenderPerBatch={20}
+                      windowSize={10}
+                      removeClippedSubviews={true}
                     />
-                  )}
-                </TouchableOpacity>
-              )}
-              style={styles.list}
-              nestedScrollEnabled
-              keyboardShouldPersistTaps="handled"
-              initialNumToRender={10}
-              maxToRenderPerBatch={10}
-              windowSize={5}
-            />
-          </View>
+                  </View>
+                </SafeAreaView>
+              </TouchableOpacity>
+            </Modal>
+          )
         )}
 
         {/* Mensagem quando não há resultados */}
@@ -497,5 +582,61 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.md,
     color: theme.colors.textSecondary,
     fontStyle: 'italic',
+  },
+  // Estilos para Modal no mobile
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  modalDropdown: {
+    backgroundColor: theme.colors.surface,
+    borderTopLeftRadius: theme.borderRadius.lg,
+    borderTopRightRadius: theme.borderRadius.lg,
+    maxHeight: '80%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  modalTitle: {
+    fontSize: theme.fontSize.md,
+    fontWeight: '600',
+    color: theme.colors.text,
+    flex: 1,
+  },
+  modalCloseButton: {
+    padding: theme.spacing.xs,
+  },
+  modalList: {
+    maxHeight: 400,
+  },
+  modalItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    minHeight: 56,
+    backgroundColor: '#ffffff',
+  },
+  modalItemText: {
+    fontSize: theme.fontSize.md,
+    color: theme.colors.text,
+    flex: 1,
   },
 });

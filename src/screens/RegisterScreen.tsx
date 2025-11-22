@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useLayoutEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useLayoutEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -246,7 +246,7 @@ export const RegisterScreen: React.FC = () => {
     }
   };
 
-  const syncData = async () => {
+  const syncData = useCallback(async () => {
     if (syncing || !isOnline) return; // Não sincronizar se já está sincronizando ou está offline
     
     try {
@@ -290,10 +290,10 @@ export const RegisterScreen: React.FC = () => {
     } finally {
       setSyncing(false);
     }
-  };
+  }, [syncing, isOnline, refreshCount]);
 
-  // Função para pull-to-refresh
-  const onRefresh = async () => {
+  // Função para pull-to-refresh (otimizada com useCallback)
+  const onRefresh = useCallback(async () => {
     if (refreshing || syncing) return;
     
     try {
@@ -316,7 +316,7 @@ export const RegisterScreen: React.FC = () => {
     } finally {
       setRefreshing(false);
     }
-  };
+  }, [refreshing, syncing, isOnline, syncData, refreshCount]);
 
   const loadPessoas = async () => {
     try {
