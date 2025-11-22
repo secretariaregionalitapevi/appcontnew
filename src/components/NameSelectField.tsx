@@ -623,6 +623,9 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
 const styles = StyleSheet.create({
   container: {
     marginBottom: theme.spacing.md,
+    ...(Platform.OS === 'web' ? {
+      backgroundColor: '#ffffff',
+    } : {}),
   },
   label: {
     fontSize: theme.fontSize.sm,
@@ -634,6 +637,10 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     position: 'relative' as ViewStyle['position'],
+    ...(Platform.OS === 'web' ? {
+      backgroundColor: '#ffffff',
+      zIndex: 1,
+    } : {}),
   },
   input: {
     borderWidth: 1.5,
@@ -650,6 +657,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 2,
+    ...(Platform.OS === 'web' ? {
+      backgroundColor: '#ffffff !important' as any,
+      opacity: 1,
+    } : {}),
   },
   manualInput: {
     backgroundColor: '#e8f5e8',
@@ -697,7 +708,13 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: Platform.OS === 'android' ? 1000 : 15,
     overflow: 'hidden',
-    zIndex: Platform.OS === 'web' ? 1001 : 1001,
+    zIndex: Platform.OS === 'web' ? 1007 : 1001,
+    ...(Platform.OS === 'web' ? {
+      // CSS direto para garantir fundo branco sólido e não transparente
+      backgroundColor: '#ffffff !important' as any,
+      opacity: 1,
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.25)',
+    } : {}),
   },
   list: {
     maxHeight: 300,
@@ -712,6 +729,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: '#ffffff',
+    ...(Platform.OS === 'web' ? {
+      backgroundColor: '#ffffff !important' as any,
+      opacity: 1,
+    } : {}),
   },
   itemHighlighted: {
     backgroundColor: theme.colors.primary + '15',

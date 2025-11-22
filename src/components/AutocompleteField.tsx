@@ -453,6 +453,9 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
 const styles = StyleSheet.create({
   container: {
     marginBottom: theme.spacing.md,
+    ...(Platform.OS === 'web' ? {
+      backgroundColor: '#ffffff',
+    } : {}),
   },
   label: {
     fontSize: theme.fontSize.sm,
@@ -464,6 +467,10 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     position: 'relative' as ViewStyle['position'],
+    ...(Platform.OS === 'web' ? {
+      backgroundColor: '#ffffff',
+      zIndex: 1,
+    } : {}),
   },
   input: {
     borderWidth: 1,
@@ -475,6 +482,10 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.md,
     color: theme.colors.text,
     minHeight: 48,
+    ...(Platform.OS === 'web' ? {
+      backgroundColor: '#ffffff !important' as any,
+      opacity: 1,
+    } : {}),
   },
   inputError: {
     borderColor: theme.colors.error,
@@ -497,6 +508,12 @@ const styles = StyleSheet.create({
     elevation: Platform.OS === 'android' ? 1000 : 15,
     overflow: 'hidden',
     zIndex: Platform.OS === 'web' ? 1001 : 1001,
+    ...(Platform.OS === 'web' ? {
+      // CSS direto para garantir fundo branco sólido e não transparente
+      backgroundColor: '#ffffff !important' as any,
+      opacity: 1,
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.25)',
+    } : {}),
   },
   list: {
     maxHeight: 300,
@@ -509,6 +526,10 @@ const styles = StyleSheet.create({
     borderBottomColor: '#f0f0f0',
     minHeight: 44,
     backgroundColor: '#ffffff',
+    ...(Platform.OS === 'web' ? {
+      backgroundColor: '#ffffff !important' as any,
+      opacity: 1,
+    } : {}),
   },
   itemSelected: {
     backgroundColor: theme.colors.primary + '15',
