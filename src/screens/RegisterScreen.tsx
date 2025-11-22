@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useLayoutEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Platform,
   ActivityIndicator,
   TouchableOpacity,
+  RefreshControl,
 } from 'react-native';
 import { useAuthContext } from '../context/AuthContext';
 import { SimpleSelectField } from '../components/SimpleSelectField';
@@ -32,12 +33,13 @@ import { showToast } from '../utils/toast';
 import { useNavigation } from '@react-navigation/native';
 import { getNaipeByInstrumento } from '../utils/instrumentNaipe';
 import { formatRegistradoPor } from '../utils/userNameUtils';
+import { generateExternalUUID } from '../utils/uuid';
 
 export const RegisterScreen: React.FC = () => {
   const { user } = useAuthContext();
 
   // Definir título da página na web
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
       document.title = 'CCB | Contagem EnR';
     }
@@ -60,6 +62,8 @@ export const RegisterScreen: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const syncIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [duplicateModalVisible, setDuplicateModalVisible] = useState(false);
   const [duplicateInfo, setDuplicateInfo] = useState<{
     nome: string;
@@ -108,6 +112,47 @@ export const RegisterScreen: React.FC = () => {
     }
   }, [isOnline]);
 
+  // Sincronização automática periódica da fila offline (igual ao backupcont)
+  useEffect(() => {
+    // Limpar intervalo anterior se existir
+    if (syncIntervalRef.current) {
+      clearInterval(syncIntervalRef.current);
+      syncIntervalRef.current = null;
+    }
+
+    // Iniciar sincronização automática a cada 5 segundos quando online
+    if (isOnline) {
+      console.log('🔄 Iniciando sincronização automática da fila offline (a cada 5s)');
+      
+      syncIntervalRef.current = setInterval(async () => {
+        if (!syncing && isOnline) {
+          try {
+            const queue = await supabaseDataService.getRegistrosPendentesFromLocal();
+            const pendingItems = queue.filter((item: any) => !item.status_sincronizacao || item.status_sincronizacao === 'pending');
+            
+            if (pendingItems.length > 0) {
+              console.log(`🔄 Processamento automático: ${pendingItems.length} itens pendentes`);
+              // Processar assincronamente sem bloquear
+              syncData().catch(error => {
+                console.error('❌ Erro no processamento automático:', error);
+              });
+            }
+          } catch (error) {
+            console.error('❌ Erro ao verificar fila offline:', error);
+          }
+        }
+      }, 5000); // A cada 5 segundos
+    }
+
+    // Cleanup: limpar intervalo quando componente desmontar ou quando ficar offline
+    return () => {
+      if (syncIntervalRef.current) {
+        clearInterval(syncIntervalRef.current);
+        syncIntervalRef.current = null;
+      }
+    };
+  }, [isOnline, syncing]);
+
   useEffect(() => {
     // Verificar se precisa de instrumento obrigatório (apenas Músico)
     // Organista não precisa de instrumento (sempre toca órgão)
@@ -149,7 +194,7 @@ export const RegisterScreen: React.FC = () => {
       let [comunsData, cargosData, instrumentosData] = await Promise.all([
         supabaseDataService.getComunsFromLocal(),
         supabaseDataService.getCargosFromLocal(),
-        supabaseDataService.getInstrumentosFromLocal(),
+        (supabaseDataService as any).getInstrumentosFromLocal(),
       ]);
 
       console.log('📊 Dados carregados:', {
@@ -161,7 +206,7 @@ export const RegisterScreen: React.FC = () => {
       // Debug detalhado dos cargos
       console.log('🔍 Debug cargos:', {
         quantidade: cargosData.length,
-        cargos: cargosData.map(c => ({ id: c.id, nome: c.nome, is_musical: c.is_musical })),
+        cargos: cargosData.map((c: Cargo) => ({ id: c.id, nome: c.nome, is_musical: c.is_musical })),
       });
 
       // Se ainda não há dados e está online, tentar buscar diretamente
@@ -240,6 +285,32 @@ export const RegisterScreen: React.FC = () => {
     }
   };
 
+  // Função para pull-to-refresh
+  const onRefresh = async () => {
+    if (refreshing || syncing) return;
+    
+    try {
+      setRefreshing(true);
+      console.log('🔄 Pull-to-refresh: recarregando dados...');
+      
+      // Recarregar dados iniciais
+      await loadInitialData();
+      
+      // Sincronizar se estiver online
+      if (isOnline) {
+        await syncData();
+      }
+      
+      // Atualizar contador
+      await refreshCount();
+    } catch (error) {
+      console.error('❌ Erro ao atualizar:', error);
+      showToast.error('Erro', 'Não foi possível atualizar os dados');
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const loadPessoas = async () => {
     try {
       console.log('📚 Carregando pessoas:', { 
@@ -249,7 +320,7 @@ export const RegisterScreen: React.FC = () => {
         showInstrumento,
       });
       
-      const pessoasData = await supabaseDataService.getPessoasFromLocal(
+      const pessoasData = await (supabaseDataService as any).getPessoasFromLocal(
         selectedComum,
         selectedCargo,
         showInstrumento ? selectedInstrumento : undefined
@@ -332,41 +403,31 @@ export const RegisterScreen: React.FC = () => {
       console.log('🔍 Verificando duplicata - success:', result.success, 'error:', result.error);
 
       if (result.success) {
-        // Verificar se realmente foi enviado ou apenas salvo localmente
+        // Verificar se foi enviado com sucesso ou salvo localmente
         const foiEnviado = !result.error || !result.error.includes('salvo localmente');
         
         if (foiEnviado) {
-          // Registro foi enviado com sucesso
-          showToast.success('Registro enviado!', 'Registro enviado com sucesso!');
+          // Registro foi enviado com sucesso (Google Sheets)
+          showToast.success('Registro enviado!', 'Registro salvo com sucesso!');
+          // Limpar formulário
+          setSelectedComum('');
+          setSelectedCargo('');
+          setSelectedInstrumento('');
+          setSelectedPessoa('');
+          setIsNomeManual(false);
         } else {
-          // Registro foi salvo localmente mas não enviado
-          // Verificar se está offline
+          // Registro foi salvo localmente (sem internet ou erro de conectividade)
           if (!isOnline) {
-            // Modo offline - mostrar mensagem igual ao ContPedras
+            // Modo offline - mostrar mensagem informativa
             showToast.info('Salvo offline', 'Enviado quando voltar online');
           } else {
-            // Online mas não foi enviado (pode ser erro temporário)
-            // Tentar sincronizar imediatamente
-            if (!syncing) {
-              console.log('🔄 Tentando sincronizar registro pendente imediatamente...');
-          setTimeout(() => {
-            syncData();
-          }, 500);
-        }
+            // Online mas erro de conectividade - mostrar mensagem informativa
             showToast.warning(
-              'Registro salvo localmente',
-              'O registro foi salvo mas não foi enviado. Tentando sincronizar...'
+              'Salvo localmente',
+              'Será enviado automaticamente quando possível'
             );
           }
-        }
-        
-        // Limpar formulário apenas se foi enviado com sucesso
-        if (foiEnviado) {
-        setSelectedComum('');
-        setSelectedCargo('');
-        setSelectedInstrumento('');
-        setSelectedPessoa('');
-        setIsNomeManual(false);
+          // Não limpar formulário se foi salvo localmente (usuário pode querer tentar novamente)
         }
       } else {
         // Verificar se é erro de duplicata
@@ -409,7 +470,7 @@ export const RegisterScreen: React.FC = () => {
                 comumNome = parts[1].trim() || comumNome;
                 dataFormatada = parts[2].trim();
                 horarioFormatado = parts[3].trim();
-              }
+            }
             } else {
               // Tentar formato sem pipes: DUPLICATA: nome comum data/horario
               // Exemplo: "DUPLICATA: ADRIANO MOTA BR-22-1739 - JARDIM MIRANDA 21/11/2025/13:18"
@@ -444,7 +505,7 @@ export const RegisterScreen: React.FC = () => {
               hour12: false,
             });
           }
-
+          
           console.log('📋 Informações extraídas:', { nome, comumNome, dataFormatada, horarioFormatado });
 
           // Mostrar alerta de duplicata usando SweetAlert2 (igual ao backupcont)
@@ -623,7 +684,7 @@ export const RegisterScreen: React.FC = () => {
   const comunsOptions = useMemo(() => {
     return comuns.map(c => {
       // Extrair nome sem código usando a função do supabaseDataService
-      const nomeExibicao = supabaseDataService.extrairNomeComum(c.nome);
+      const nomeExibicao = (supabaseDataService as any).extrairNomeComum(c.nome);
       return {
         id: c.id,
         label: nomeExibicao || c.nome, // Nome sem código para exibição
@@ -725,7 +786,7 @@ export const RegisterScreen: React.FC = () => {
       const instrumentoFinal = instrumentoObj?.nome.toUpperCase() || (data.classe ? 'ÓRGÃO' : '');
 
       const sheetRow = {
-        UUID: registro.id || `external_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        UUID: registro.id || generateExternalUUID(),
         'NOME COMPLETO': data.nome.trim().toUpperCase(),
         COMUM: data.comum.toUpperCase(),
         CIDADE: data.cidade.toUpperCase(),
@@ -793,7 +854,17 @@ export const RegisterScreen: React.FC = () => {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           collapsable={false}
-          style={Platform.OS === 'web' ? { position: 'relative' as const } : undefined}
+          style={Platform.OS === 'web' ? { position: 'relative' as const, overflow: 'visible' as const } : { overflow: 'visible' as const }}
+          refreshControl={
+            Platform.OS !== 'web' ? (
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={[theme.colors.primary]}
+                tintColor={theme.colors.primary}
+              />
+            ) : undefined
+          }
         >
           <View style={styles.card}>
             <View style={styles.cardHeader}>
@@ -814,7 +885,7 @@ export const RegisterScreen: React.FC = () => {
               setIsNomeManual(false);
             }}
                   placeholder="Selecione a comum..."
-                />
+          />
                 <TouchableOpacity
                   onPress={(e) => {
                     e.preventDefault?.();
@@ -829,18 +900,49 @@ export const RegisterScreen: React.FC = () => {
                 </TouchableOpacity>
               </View>
 
-              <AutocompleteField
-            label="CARGO/MINISTÉRIO *"
-            value={selectedCargo}
-            options={cargosOptions}
-            onSelect={option => {
-                  setSelectedCargo(String(option.value));
-              setSelectedInstrumento('');
-              setSelectedPessoa('');
-              setIsNomeManual(false);
-            }}
-                placeholder="Selecione o cargo..."
-          />
+              <View style={styles.field}>
+                <Text style={styles.label}>CARGO/MINISTÉRIO *</Text>
+                {Platform.OS === 'web' ? (
+                  <select
+                    style={{
+                      ...styles.selectWeb,
+                      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%23999' d='M5 7L1 3h8z'/%3E%3C/svg%3E")`,
+                      backgroundRepeat: 'no-repeat',
+                      backgroundPosition: 'right 10px center',
+                      backgroundSize: '10px 10px',
+                      paddingRight: '35px',
+                    } as any}
+                    value={selectedCargo}
+                    onChange={(e) => {
+                      setSelectedCargo(e.target.value);
+                      setSelectedInstrumento('');
+                      setSelectedPessoa('');
+                      setIsNomeManual(false);
+                    }}
+                    required
+                  >
+                    <option value="">Selecione o cargo...</option>
+                    {cargos.map(cargo => (
+                      <option key={cargo.id} value={cargo.id}>
+                        {cargo.nome}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <SimpleSelectField
+                    label=""
+                    value={selectedCargo}
+                    options={cargosOptions}
+                    onSelect={option => {
+                      setSelectedCargo(String(option.value));
+                      setSelectedInstrumento('');
+                      setSelectedPessoa('');
+                      setIsNomeManual(false);
+                    }}
+                    placeholder="Selecione o cargo..."
+                  />
+                )}
+              </View>
 
                   {showInstrumento && (
                     <SimpleSelectField
@@ -1032,6 +1134,13 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     padding: theme.spacing.lg,
+    ...(Platform.OS === 'web'
+      ? {
+          overflow: 'visible' as const,
+        }
+      : {
+          overflow: 'visible' as const,
+        }),
   },
   loadingContainer: {
     flex: 1,
@@ -1053,7 +1162,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-    overflow: 'visible',
+    overflow: 'visible' as const,
     ...(Platform.OS === 'web'
       ? {
           position: 'relative' as const,
@@ -1080,6 +1189,13 @@ const styles = StyleSheet.create({
   },
   cardBody: {
     padding: theme.spacing.lg,
+    ...(Platform.OS === 'web'
+      ? {
+          overflow: 'visible' as const,
+        }
+      : {
+          overflow: 'visible' as const,
+        }),
   },
   hint: {
     fontSize: theme.fontSize.xs,
@@ -1139,4 +1255,38 @@ const styles = StyleSheet.create({
         }
       : {}),
   },
+  field: {
+    marginBottom: theme.spacing.md,
+  },
+  label: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: '600',
+    color: theme.colors.text,
+    marginBottom: theme.spacing.xs,
+  },
+  selectWeb: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.md,
+    backgroundColor: theme.colors.surface,
+    paddingTop: theme.spacing.sm,
+    paddingBottom: theme.spacing.sm,
+    paddingLeft: theme.spacing.md,
+    paddingRight: '35px',
+    fontSize: theme.fontSize.md,
+    color: theme.colors.text,
+    minHeight: 48,
+    outline: 'none',
+    cursor: 'pointer',
+    ...(Platform.OS === 'web' ? {
+      WebkitAppearance: 'none' as any,
+      MozAppearance: 'none' as any,
+      appearance: 'none' as any,
+      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%23999' d='M5 7L1 3h8z'/%3E%3C/svg%3E")`,
+      backgroundRepeat: 'no-repeat',
+      backgroundPosition: 'right 10px center',
+      backgroundSize: '10px 10px',
+    } : {}),
+  } as any,
 });
