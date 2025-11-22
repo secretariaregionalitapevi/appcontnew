@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -54,6 +54,7 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
   const inputRef = useRef<TextInput>(null);
   const blurTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const flatListRef = useRef<FlatList>(null);
+  const [dropdownLayout, setDropdownLayout] = useState<{ top: number; left: number; width: number } | null>(null);
 
   // Normalizar texto (remove acentos, converte para minúscula)
   const normalize = (text: string) => {
@@ -95,10 +96,48 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
     setSelectedIndex(-1); // Reset seleção ao digitar
     if (text.trim().length >= 2) {
       setShowList(true);
+      setTimeout(() => calculateDropdownPosition(), 50);
     } else {
       setShowList(false);
     }
   };
+
+  // Calcular posição do dropdown usando position: fixed
+  const calculateDropdownPosition = useCallback(() => {
+    if (Platform.OS === 'web' && inputRef.current) {
+      try {
+        const inputElement = (inputRef.current as any)._nativeNode || 
+                            (inputRef.current as any).base || 
+                            inputRef.current;
+        
+        if (inputElement && typeof window !== 'undefined') {
+          // Tentar getBoundingClientRect primeiro
+          if (inputElement.getBoundingClientRect) {
+            const rect = inputElement.getBoundingClientRect();
+            setDropdownLayout({
+              top: rect.bottom + 4,
+              left: rect.left,
+              width: rect.width,
+            });
+            return;
+          }
+          
+          // Fallback: usar offsetTop/offsetLeft
+          if (inputElement.offsetTop !== undefined) {
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+            setDropdownLayout({
+              top: inputElement.offsetTop + inputElement.offsetHeight + scrollTop + 4,
+              left: inputElement.offsetLeft + scrollLeft,
+              width: inputElement.offsetWidth || 300,
+            });
+          }
+        }
+      } catch (error) {
+        console.warn('Erro ao calcular posição:', error);
+      }
+    }
+  }, []);
 
   // Quando o campo recebe foco
   const handleFocus = () => {
@@ -110,6 +149,7 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
     }
     if (searchText.trim().length >= 2) {
       setShowList(true);
+      setTimeout(() => calculateDropdownPosition(), 50);
     }
   };
 
@@ -169,6 +209,26 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
     }
   };
 
+
+  // Atualizar posição quando scroll ou resize
+  useEffect(() => {
+    if (Platform.OS === 'web' && showList && isFocused) {
+      const updatePosition = () => {
+        calculateDropdownPosition();
+      };
+      
+      if (typeof window !== 'undefined') {
+        window.addEventListener('scroll', updatePosition, true);
+        window.addEventListener('resize', updatePosition);
+        
+        return () => {
+          window.removeEventListener('scroll', updatePosition, true);
+          window.removeEventListener('resize', updatePosition);
+        };
+      }
+    }
+  }, [showList, isFocused, calculateDropdownPosition]);
+
   // Limpar timeouts ao desmontar
   useEffect(() => {
     return () => {
@@ -178,14 +238,9 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
     };
   }, []);
 
-  // Z-index DINÂMICO baseado no foco - campo ativo sempre acima
-  // Valores extremos para garantir que campo focado SEMPRE fique acima de tudo
-  const baseZIndex = Platform.OS === 'web' ? 1 : 1; // Z-index base muito baixo para campos não focados
-  const focusedZIndex = Platform.OS === 'web' ? 2147483647 : 10000; // Z-index máximo possível (2147483647 = max int32) para campo focado
-  const dropdownZIndex = Platform.OS === 'web' ? 2147483647 : 10001; // Z-index máximo para dropdown do campo focado
-  
-  const containerZIndex = isFocused ? focusedZIndex : baseZIndex;
-  const inputZIndex = isFocused ? focusedZIndex : baseZIndex;
+  // Z-index muito alto para garantir que dropdown apareça acima de TUDO
+  const containerZIndex = isFocused ? (Platform.OS === 'web' ? 9999 : 1000) : 1;
+  const dropdownZIndex = Platform.OS === 'web' ? 10000 : 1001;
 
   return (
       <View
@@ -194,14 +249,14 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
           style,
           Platform.OS === 'web'
             ? {
-                zIndex: containerZIndex,
                 position: 'relative' as ViewStyle['position'],
                 overflow: 'visible' as ViewStyle['overflow'],
+                zIndex: containerZIndex,
               }
             : {
-                elevation: isFocused ? 100 : 0,
-                zIndex: isFocused ? 10000 : 1,
                 overflow: 'visible' as ViewStyle['overflow'],
+                zIndex: containerZIndex,
+                elevation: isFocused ? 10 : 0,
               },
         ]}
         ref={containerRef}
@@ -214,13 +269,13 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
           styles.inputContainer,
           Platform.OS === 'web'
             ? {
-                zIndex: inputZIndex,
                 position: 'relative' as ViewStyle['position'],
                 overflow: 'visible' as ViewStyle['overflow'],
+                zIndex: containerZIndex,
               }
             : {
-                zIndex: inputZIndex,
                 overflow: 'visible' as ViewStyle['overflow'],
+                zIndex: containerZIndex,
               },
         ]}
       >
@@ -231,7 +286,6 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
             error && styles.inputError,
             Platform.OS === 'web'
               ? {
-                  zIndex: inputZIndex,
                   position: 'relative' as ViewStyle['position'],
                 }
               : {},
@@ -295,7 +349,7 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
             : {})}
         />
 
-        {/* Dropdown - Modal no mobile, inline na web */}
+        {/* Dropdown - Modal no mobile, FIXED na web para aparecer acima de TUDO */}
         {showList && filtered.length > 0 && (
           Platform.OS === 'web' ? (
             <View
@@ -303,7 +357,16 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
                 styles.dropdown,
                 {
                   zIndex: dropdownZIndex,
-                  position: 'absolute' as ViewStyle['position'],
+                  position: dropdownLayout ? ('fixed' as ViewStyle['position']) : ('absolute' as ViewStyle['position']),
+                  ...(dropdownLayout ? {
+                    top: dropdownLayout.top,
+                    left: dropdownLayout.left,
+                    width: dropdownLayout.width,
+                  } : {
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                  }),
                 },
               ]}
               onStartShouldSetResponder={() => false}
@@ -501,7 +564,11 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: Platform.OS === 'android' ? 1000 : 15,
     overflow: 'hidden',
-    zIndex: Platform.OS === 'web' ? 99999999 : 10000,
+    zIndex: Platform.OS === 'web' ? 10000 : 1001,
+    ...(Platform.OS === 'web' ? {
+      // CSS direto para garantir que apareça acima de tudo
+      boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)',
+    } : {}),
   },
   list: {
     maxHeight: 300,

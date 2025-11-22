@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -52,6 +52,7 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
   const inputRef = useRef<TextInput>(null);
   const blurTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const flatListRef = useRef<FlatList>(null);
+  const [dropdownLayout, setDropdownLayout] = useState<{ top: number; left: number; width: number } | null>(null);
 
   // Normalizar texto (remove acentos, converte para minúscula)
   const normalize = (text: string) => {
@@ -96,6 +97,7 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
     });
 
     // Se não há texto digitado, mostrar todas as opções + opção manual no final
+    // SEMPRE mostrar lista quando não há texto (igual músicos)
     if (!searchText.trim()) {
       return optionsWithManual;
     }
@@ -148,13 +150,10 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
     setSelectedIndex(-1);
 
     if (isManualMode) {
-      // Em modo manual, atualizar diretamente
       onSelect({ id: 'manual', label: text, value: text });
       return;
     }
 
-    // Mostrar lista quando há texto ou quando há opções disponíveis
-    // No Android, mostrar sempre que há opções para melhor UX
     if (Platform.OS === 'android') {
       if (options.length > 0) {
         setShowList(true);
@@ -162,13 +161,49 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
         setShowList(false);
       }
     } else {
-    if (text.trim().length > 0 || options.length > 0) {
-      setShowList(true);
-    } else {
-      setShowList(false);
+      if (text.trim().length > 0 || options.length > 0) {
+        setShowList(true);
+        setTimeout(() => calculateDropdownPosition(), 50);
+      } else {
+        setShowList(false);
       }
     }
   };
+
+  // Calcular posição do dropdown usando position: fixed
+  const calculateDropdownPosition = useCallback(() => {
+    if (Platform.OS === 'web' && inputRef.current && !isManualMode) {
+      try {
+        const inputElement = (inputRef.current as any)._nativeNode || 
+                            (inputRef.current as any).base || 
+                            inputRef.current;
+        
+        if (inputElement && typeof window !== 'undefined') {
+          if (inputElement.getBoundingClientRect) {
+            const rect = inputElement.getBoundingClientRect();
+            setDropdownLayout({
+              top: rect.bottom + 4,
+              left: rect.left,
+              width: rect.width,
+            });
+            return;
+          }
+          
+          if (inputElement.offsetTop !== undefined) {
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+            setDropdownLayout({
+              top: inputElement.offsetTop + inputElement.offsetHeight + scrollTop + 4,
+              left: inputElement.offsetLeft + scrollLeft,
+              width: inputElement.offsetWidth || 300,
+            });
+          }
+        }
+      } catch (error) {
+        console.warn('Erro ao calcular posição:', error);
+      }
+    }
+  }, [isManualMode]);
 
   // Quando o campo recebe foco
   const handleFocus = () => {
@@ -180,13 +215,15 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
     }
 
     if (isManualMode) {
-      // Em modo manual, não mostrar lista
       return;
     }
 
-    // Mostrar lista se há opções disponíveis (Android precisa mostrar imediatamente)
     if (options.length > 0) {
       setShowList(true);
+      setTimeout(() => calculateDropdownPosition(), 50);
+    } else {
+      setShowList(true);
+      setTimeout(() => calculateDropdownPosition(), 50);
     }
   };
 
@@ -259,6 +296,26 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
     }
   };
 
+
+  // Atualizar posição quando scroll ou resize
+  useEffect(() => {
+    if (Platform.OS === 'web' && showList && isFocused && !isManualMode) {
+      const updatePosition = () => {
+        calculateDropdownPosition();
+      };
+      
+      if (typeof window !== 'undefined') {
+        window.addEventListener('scroll', updatePosition, true);
+        window.addEventListener('resize', updatePosition);
+        
+        return () => {
+          window.removeEventListener('scroll', updatePosition, true);
+          window.removeEventListener('resize', updatePosition);
+        };
+      }
+    }
+  }, [showList, isFocused, isManualMode, calculateDropdownPosition]);
+
   // Limpar timeouts ao desmontar
   useEffect(() => {
     return () => {
@@ -268,15 +325,9 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
     };
   }, []);
 
-  // Z-index DINÂMICO baseado no foco - campo ativo sempre acima
-  // Z-index DINÂMICO baseado no foco - campo ativo sempre acima
-  // Valores extremos para garantir que campo focado SEMPRE fique acima de tudo
-  const baseZIndex = Platform.OS === 'web' ? 1 : 1; // Z-index base muito baixo para campos não focados
-  const focusedZIndex = Platform.OS === 'web' ? 2147483647 : 10000; // Z-index máximo possível (2147483647 = max int32) para campo focado
-  const dropdownZIndex = Platform.OS === 'web' ? 2147483647 : 10001; // Z-index máximo para dropdown do campo focado
-  
-  const containerZIndex = isFocused ? focusedZIndex : baseZIndex;
-  const inputZIndex = isFocused ? focusedZIndex : baseZIndex;
+  // Z-index muito alto para garantir que dropdown apareça acima de TUDO
+  const containerZIndex = isFocused ? (Platform.OS === 'web' ? 9999 : 1000) : 1;
+  const dropdownZIndex = Platform.OS === 'web' ? 10000 : 1001;
 
   return (
     <View
@@ -285,14 +336,14 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
         style,
           Platform.OS === 'web'
           ? {
+              position: 'relative' as ViewStyle['position'],
+              overflow: 'visible' as ViewStyle['overflow'],
               zIndex: containerZIndex,
-                position: 'relative' as ViewStyle['position'],
-                overflow: 'visible' as ViewStyle['overflow'],
             }
           : {
-              elevation: isFocused ? 100 : 0,
-              zIndex: isFocused ? 10000 : 1,
               overflow: 'visible' as ViewStyle['overflow'],
+              zIndex: containerZIndex,
+              elevation: isFocused ? 10 : 0,
             },
       ]}
       ref={containerRef}
@@ -305,13 +356,13 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
           styles.inputContainer,
           Platform.OS === 'web'
             ? {
-                zIndex: inputZIndex,
                 position: 'relative' as ViewStyle['position'],
                 overflow: 'visible' as ViewStyle['overflow'],
+                zIndex: containerZIndex,
               }
             : {
-                zIndex: inputZIndex,
                 overflow: 'visible' as ViewStyle['overflow'],
+                zIndex: containerZIndex,
               },
         ]}
       >
@@ -326,7 +377,6 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
                 error && styles.inputError,
                 Platform.OS === 'web'
                   ? {
-                      zIndex: inputZIndex,
                       position: 'relative' as ViewStyle['position'],
                     }
                   : {},
@@ -366,7 +416,6 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
                 error && styles.inputError,
                 Platform.OS === 'web'
                   ? {
-                      zIndex: inputZIndex,
                       position: 'relative' as ViewStyle['position'],
                     }
                   : {},
@@ -520,11 +569,20 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
                   Platform.OS === 'web'
                     ? {
                         zIndex: dropdownZIndex,
-                        position: 'absolute' as ViewStyle['position'],
+                        position: dropdownLayout ? ('fixed' as ViewStyle['position']) : ('absolute' as ViewStyle['position']),
+                        ...(dropdownLayout ? {
+                          top: dropdownLayout.top,
+                          left: dropdownLayout.left,
+                          width: dropdownLayout.width,
+                        } : {
+                          top: '100%',
+                          left: 0,
+                          right: 0,
+                        }),
                       }
                     : {
                         zIndex: dropdownZIndex,
-                        elevation: 1000, // Elevation alto no Android
+                        elevation: 1000,
                       },
                 ]}
                     onStartShouldSetResponder={() => false}
@@ -706,7 +764,10 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: Platform.OS === 'android' ? 1000 : 15,
     overflow: 'hidden',
-    zIndex: Platform.OS === 'web' ? 99999999 : 10000,
+    zIndex: Platform.OS === 'web' ? 10000 : 1001,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)',
+    } : {}),
   },
   list: {
     maxHeight: 300,

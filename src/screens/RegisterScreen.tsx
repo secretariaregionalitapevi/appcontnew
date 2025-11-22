@@ -79,7 +79,10 @@ export const RegisterScreen: React.FC = () => {
   const selectedCargoObj = cargos.find(c => c.id === selectedCargo);
   const cargoNome = selectedCargoObj?.nome || '';
   const isOrganista = cargoNome === 'Organista';
-  const showInstrumento = !isOrganista && selectedCargoObj?.is_musical;
+  const isCandidato = cargoNome === 'Candidato (a)';
+  // Mostrar campo de instrumento apenas para Músico (não para Organista nem Candidato)
+  // Candidatos têm instrumento na tabela, será buscado automaticamente ao enviar
+  const showInstrumento = !isOrganista && !isCandidato && selectedCargoObj?.is_musical;
 
   useEffect(() => {
     loadInitialData();
@@ -162,10 +165,10 @@ export const RegisterScreen: React.FC = () => {
 
   useEffect(() => {
     // Verificar se precisa de instrumento obrigatório (apenas Músico)
-    // Organista não precisa de instrumento (sempre toca órgão)
+    // Organista e Candidato(a) não precisam de instrumento obrigatório, mas podem ter
     const selectedCargoObj = cargos.find(c => c.id === selectedCargo);
     const cargoNome = selectedCargoObj?.nome || '';
-    const precisaInstrumento = cargoNome === 'Músico'; // Organista removido
+    const precisaInstrumento = cargoNome === 'Músico'; // Apenas Músico requer instrumento obrigatório
     
     // Só carregar pessoas se tiver comum + cargo + (instrumento se necessário)
     if (selectedComum && selectedCargo) {
@@ -342,8 +345,15 @@ export const RegisterScreen: React.FC = () => {
   };
 
   const handleSubmit = async () => {
-    if (!selectedComum || !selectedCargo || !selectedPessoa) {
+    // Validar campos obrigatórios (permitir nome manual para candidatos também)
+    if (!selectedComum || !selectedCargo) {
       Alert.alert('Erro', 'Preencha todos os campos obrigatórios');
+      return;
+    }
+    
+    // Validar nome: pode ser selecionado da lista OU digitado manualmente
+    if (!selectedPessoa || selectedPessoa.trim() === '') {
+      Alert.alert('Erro', 'Selecione um nome da lista ou digite manualmente');
       return;
     }
 
@@ -368,8 +378,17 @@ export const RegisterScreen: React.FC = () => {
     
     // Usar nome do usuário ao invés do ID
       // Extrair apenas primeiro e último nome do usuário
-      const nomeCompletoUsuario = user.nome || user.email || user.id;
-      const nomeUsuario = formatRegistradoPor(nomeCompletoUsuario);
+      // Se não tem nome no perfil, extrair do email (remover @gmail.com e formatar)
+      let nomeCompletoUsuario = user.nome;
+      if (!nomeCompletoUsuario || nomeCompletoUsuario.trim() === '') {
+        // Extrair nome do email: ricardograngeiro@gmail.com -> ricardograngeiro
+        // A função formatRegistradoPor vai separar e formatar corretamente
+        const emailSemDominio = user.email?.split('@')[0] || '';
+        // Substituir pontos e underscores por espaços, mas manter minúsculas para a função separar
+        nomeCompletoUsuario = emailSemDominio.replace(/[._]/g, ' ').trim();
+      }
+      // formatRegistradoPor extrai primeiro e último nome, separa palavras juntas e converte para maiúscula
+      const nomeUsuario = formatRegistradoPor(nomeCompletoUsuario || user.id);
     
     // Buscar classe da organista do banco de dados se for Organista
     // Se nome é manual, não buscar classe (cadastro desatualizado)
@@ -384,6 +403,15 @@ export const RegisterScreen: React.FC = () => {
       }
     }
 
+    // Para Candidatos: buscar instrumento da pessoa selecionada (está na tabela candidatos)
+    let instrumentoCandidato: string | null = null;
+    if (isCandidato && !isNomeManual) {
+      const pessoaSelecionada = pessoas.find(p => p.id === selectedPessoa);
+      if (pessoaSelecionada && pessoaSelecionada.instrumento_id) {
+        instrumentoCandidato = pessoaSelecionada.instrumento_id;
+      }
+    }
+
     // Se nome é manual, usar o texto digitado como pessoa_id temporário
     // O sistema precisa lidar com isso nos serviços de sincronização
     const pessoaIdFinal = isNomeManual ? `manual_${selectedPessoa}` : selectedPessoa;
@@ -392,7 +420,15 @@ export const RegisterScreen: React.FC = () => {
       pessoa_id: pessoaIdFinal,
       comum_id: selectedComum,
       cargo_id: selectedCargo,
-      instrumento_id: showInstrumento ? selectedInstrumento : null,
+      // Incluir instrumento:
+      // - Para Músico: usar selectedInstrumento (selecionado pelo usuário)
+      // - Para Candidato: usar instrumento da pessoa (buscado da tabela)
+      // - Para Organista: null (sempre toca órgão, será normalizado depois)
+      instrumento_id: isCandidato 
+        ? instrumentoCandidato 
+        : (showInstrumento && selectedInstrumento) 
+          ? selectedInstrumento 
+          : null,
       classe_organista: classeOrganistaDB, // Buscar do banco de dados (ou null se manual)
       local_ensaio: localEnsaio || 'Não definido',
       data_hora_registro: getCurrentDateTimeISO(),
@@ -758,8 +794,17 @@ export const RegisterScreen: React.FC = () => {
     try {
       const localEnsaio = await localStorageService.getLocalEnsaio();
       // Extrair apenas primeiro e último nome do usuário
-      const nomeCompletoUsuario = user.nome || user.email || user.id;
-      const nomeUsuario = formatRegistradoPor(nomeCompletoUsuario);
+      // Se não tem nome no perfil, extrair do email (remover @gmail.com e formatar)
+      let nomeCompletoUsuario = user.nome;
+      if (!nomeCompletoUsuario || nomeCompletoUsuario.trim() === '') {
+        // Extrair nome do email: ricardograngeiro@gmail.com -> ricardograngeiro
+        // A função formatRegistradoPor vai separar e formatar corretamente
+        const emailSemDominio = user.email?.split('@')[0] || '';
+        // Substituir pontos e underscores por espaços, mas manter minúsculas para a função separar
+        nomeCompletoUsuario = emailSemDominio.replace(/[._]/g, ' ').trim();
+      }
+      // formatRegistradoPor extrai primeiro e último nome, separa palavras juntas e converte para maiúscula
+      const nomeUsuario = formatRegistradoPor(nomeCompletoUsuario || user.id);
 
       // Buscar cargo e instrumento para obter nomes
       const cargoObj = cargos.find(c => c.id === data.cargo);
@@ -813,23 +858,11 @@ export const RegisterScreen: React.FC = () => {
         ANOTACOES: 'Cadastro fora da Regional',
       };
 
-      // Enviar para Google Sheets diretamente
-      const GOOGLE_SHEETS_API_URL =
-        'https://script.google.com/macros/s/AKfycbxPtvi86jPy7y41neTpIPvn3hpycd3cMjbgjgifzLD6qRwrJVPlF9EDulaQp42nma-i/exec';
+      // 🚨 CORREÇÃO CRÍTICA: Usar o mesmo fluxo do handleSubmit
+      // Enviar primeiro para Google Sheets, depois para Supabase
+      const result = await (offlineSyncService as any).createRegistro(registro);
       
-      const response = await fetch(GOOGLE_SHEETS_API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'text/plain;charset=utf-8',
-        },
-        body: JSON.stringify({
-          op: 'append',
-          sheet: 'Dados',
-          data: sheetRow,
-        }),
-      });
-
-      if (response.ok || response.type === 'opaque') {
+      if (result.success) {
         showToast.success(
           'Registro salvo!',
           'Registro de visita salvo com sucesso.'
@@ -842,7 +875,47 @@ export const RegisterScreen: React.FC = () => {
           }, 1000);
         }
       } else {
-        throw new Error('Erro ao enviar para Google Sheets');
+        // Verificar se é erro de duplicata
+        if (result.error && result.error.includes('DUPLICATA:')) {
+          // Tratar duplicata (mesmo fluxo do handleSubmit)
+          const errorPart = result.error.split('DUPLICATA:')[1]?.trim() || '';
+          const parts = errorPart.split('|');
+          if (parts.length >= 4) {
+            const nome = parts[0].trim();
+            const comumNome = parts[1].trim();
+            const dataFormatada = parts[2].trim();
+            const horarioFormatado = parts[3].trim();
+            
+            Alert.alert(
+              '⚠️ Cadastro Duplicado!',
+              `${nome} de ${comumNome} já foi cadastrado hoje!\n\nData: ${dataFormatada}\nHorário: ${horarioFormatado}`,
+              [
+                { text: 'Cancelar', style: 'cancel' },
+                {
+                  text: 'Cadastrar Mesmo Assim',
+                  onPress: async () => {
+                    // Forçar criação mesmo com duplicata
+                    const resultForce = await (offlineSyncService as any).createRegistro(registro, true);
+                    if (resultForce.success) {
+                      showToast.success('Registro enviado!', 'Registro duplicado cadastrado com sucesso!');
+                      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                        setTimeout(() => {
+                          window.location.reload();
+                        }, 1000);
+                      }
+                    } else {
+                      showToast.error('Erro', resultForce.error || 'Erro ao cadastrar registro duplicado');
+                    }
+                  },
+                },
+              ]
+            );
+          } else {
+            showToast.error('Erro', 'Registro duplicado detectado');
+          }
+        } else {
+          throw new Error(result.error || 'Erro ao enviar registro');
+        }
       }
     } catch (error) {
       console.error('Erro ao salvar novo registro:', error);
@@ -869,7 +942,11 @@ export const RegisterScreen: React.FC = () => {
           scrollEventThrottle={16}
           removeClippedSubviews={Platform.OS === 'android'}
           style={Platform.OS === 'web' 
-            ? { position: 'relative' as const, overflow: 'visible' as const } 
+            ? { 
+                position: 'relative' as const, 
+                overflow: 'visible' as const,
+                zIndex: 1,
+              } 
             : { 
                 flex: 1,
                 width: '100%',
@@ -1212,7 +1289,12 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
     overflow: 'visible' as const,
-    // SEM z-index no card para não interferir com os campos
+    ...(Platform.OS === 'web'
+      ? {
+          position: 'relative' as const,
+          zIndex: 1,
+        }
+      : {}),
   },
   cardHeader: {
     backgroundColor: theme.colors.surface,
@@ -1236,6 +1318,8 @@ const styles = StyleSheet.create({
     ...(Platform.OS === 'web'
       ? {
           overflow: 'visible' as const,
+          position: 'relative' as const,
+          zIndex: 1,
         }
       : {
           overflow: 'visible' as const,
