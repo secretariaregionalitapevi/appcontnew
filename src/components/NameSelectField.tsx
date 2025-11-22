@@ -162,10 +162,10 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
         setShowList(false);
       }
     } else {
-      if (text.trim().length > 0 || options.length > 0) {
-        setShowList(true);
-      } else {
-        setShowList(false);
+    if (text.trim().length > 0 || options.length > 0) {
+      setShowList(true);
+    } else {
+      setShowList(false);
       }
     }
   };
@@ -268,25 +268,34 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
     };
   }, []);
 
-  // Z-index PERMANENTE e ALTO - sempre em evidência
-  const dynamicZIndex = 99999; // Valor fixo e alto
-  const dropdownZIndex = 999999; // Valor ainda mais alto para o dropdown
+  // Z-index DINÂMICO baseado no foco - campo ativo sempre acima
+  const baseZIndex = Platform.OS === 'web' ? 1000 : 1; // Z-index base para campos não focados
+  const focusedZIndex = Platform.OS === 'web' ? 9999999 : 10000; // Z-index muito alto para campo focado
+  const dropdownZIndex = Platform.OS === 'web' ? 99999999 : 10001; // Z-index ainda mais alto para dropdown do campo focado
+  
+  const containerZIndex = isFocused ? focusedZIndex : baseZIndex;
+  const inputZIndex = isFocused ? focusedZIndex : baseZIndex;
 
   return (
-      <View
-        style={[
-          styles.container,
-          style,
+    <View
+      style={[
+        styles.container,
+        style,
           Platform.OS === 'web'
-            ? {
-                zIndex: dynamicZIndex,
+          ? {
+              zIndex: containerZIndex,
                 position: 'relative' as ViewStyle['position'],
-              }
-            : {},
-        ]}
-        ref={containerRef}
-        collapsable={false}
-      >
+                overflow: 'visible' as ViewStyle['overflow'],
+            }
+          : {
+              elevation: isFocused ? 100 : 0,
+              zIndex: isFocused ? 10000 : 1,
+              overflow: 'visible' as ViewStyle['overflow'],
+            },
+      ]}
+      ref={containerRef}
+      collapsable={false}
+    >
       {label && <Text style={styles.label}>{label}</Text>}
 
       <View
@@ -294,10 +303,14 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
           styles.inputContainer,
           Platform.OS === 'web'
             ? {
-                zIndex: dynamicZIndex,
+                zIndex: inputZIndex,
                 position: 'relative' as ViewStyle['position'],
+                overflow: 'visible' as ViewStyle['overflow'],
               }
-            : {},
+            : {
+                zIndex: inputZIndex,
+                overflow: 'visible' as ViewStyle['overflow'],
+              },
         ]}
       >
         {isManualMode ? (
@@ -305,7 +318,17 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
           <View style={styles.manualContainer}>
             <TextInput
               ref={inputRef}
-              style={[styles.input, styles.manualInput, error && styles.inputError]}
+              style={[
+                styles.input,
+                styles.manualInput,
+                error && styles.inputError,
+                Platform.OS === 'web'
+                  ? {
+                      zIndex: inputZIndex,
+                      position: 'relative' as ViewStyle['position'],
+                    }
+                  : {},
+              ]}
               value={searchText}
               onChangeText={handleChange}
               onFocus={handleFocus}
@@ -336,7 +359,16 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
           <>
             <TextInput
               ref={inputRef}
-              style={[styles.input, error && styles.inputError]}
+              style={[
+                styles.input,
+                error && styles.inputError,
+                Platform.OS === 'web'
+                  ? {
+                      zIndex: inputZIndex,
+                      position: 'relative' as ViewStyle['position'],
+                    }
+                  : {},
+              ]}
               value={searchText}
               onChangeText={handleChange}
               onFocus={handleFocus}
@@ -479,17 +511,17 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
               </Modal>
             ) : (
               <>
-                {showList && filtered.length > 0 && (
-                  <View
-                    style={[
-                      styles.dropdown,
-                      Platform.OS === 'web'
-                        ? {
-                            zIndex: dropdownZIndex,
-                            position: 'absolute' as ViewStyle['position'],
-                          }
-                        : {},
-                    ]}
+            {showList && filtered.length > 0 && (
+              <View
+                style={[
+                  styles.dropdown,
+                  Platform.OS === 'web'
+                    ? {
+                        zIndex: dropdownZIndex,
+                        position: 'absolute' as ViewStyle['position'],
+                      }
+                    : {},
+                ]}
                     onStartShouldSetResponder={() => true}
                     onMoveShouldSetResponder={() => true}
                     {...(Platform.OS === 'web'
@@ -510,21 +542,21 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
                           },
                         }
                       : {})}
-                  >
-                    <FlatList
-                      ref={flatListRef}
-                      data={filtered}
-                      keyExtractor={item => item.id}
-                      renderItem={({ item, index }) => {
-                        const isManualOption = item.id === MANUAL_INPUT_OPTION_ID;
-                        return (
-                          <TouchableOpacity
-                            style={[
-                              styles.item,
-                              selectedIndex === index && styles.itemHighlighted,
-                              value === item.id && !isManualOption && styles.itemSelected,
-                              isManualOption && styles.itemManual,
-                            ]}
+              >
+                <FlatList
+                  ref={flatListRef}
+                  data={filtered}
+                  keyExtractor={item => item.id}
+                  renderItem={({ item, index }) => {
+                    const isManualOption = item.id === MANUAL_INPUT_OPTION_ID;
+                    return (
+                      <TouchableOpacity
+                        style={[
+                          styles.item,
+                          selectedIndex === index && styles.itemHighlighted,
+                          value === item.id && !isManualOption && styles.itemSelected,
+                          isManualOption && styles.itemManual,
+                        ]}
                             onPress={() => {
                               // Cancelar blur pendente ao clicar
                               if (blurTimeoutRef.current) {
@@ -533,52 +565,52 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
                               }
                               handleSelect(item);
                             }}
-                            activeOpacity={0.7}
-                            {...(Platform.OS === 'web'
-                              ? {
-                                  onMouseEnter: () => setSelectedIndex(index),
-                                  onMouseLeave: () => setSelectedIndex(-1),
-                                }
-                              : {})}
-                          >
-                            <Text
-                              style={[
-                                styles.itemText,
-                                value === item.id && !isManualOption && styles.itemTextSelected,
-                                isManualOption && styles.itemTextManual,
-                              ]}
-                              numberOfLines={1}
-                            >
-                              {item.label}
-                            </Text>
-                            {value === item.id && !isManualOption && (
-                              <FontAwesome5
-                                name="check"
-                                size={12}
-                                color={theme.colors.primary}
-                                style={styles.checkIcon}
-                              />
-                            )}
-                          </TouchableOpacity>
-                        );
-                      }}
-                      style={styles.list}
-                      nestedScrollEnabled
-                      keyboardShouldPersistTaps="handled"
-                      initialNumToRender={10}
-                      maxToRenderPerBatch={10}
-                      windowSize={5}
-                    />
-                  </View>
-                )}
+                        activeOpacity={0.7}
+                        {...(Platform.OS === 'web'
+                          ? {
+                              onMouseEnter: () => setSelectedIndex(index),
+                              onMouseLeave: () => setSelectedIndex(-1),
+                            }
+                          : {})}
+                      >
+                        <Text
+                          style={[
+                            styles.itemText,
+                            value === item.id && !isManualOption && styles.itemTextSelected,
+                            isManualOption && styles.itemTextManual,
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {item.label}
+                        </Text>
+                        {value === item.id && !isManualOption && (
+                          <FontAwesome5
+                            name="check"
+                            size={12}
+                            color={theme.colors.primary}
+                            style={styles.checkIcon}
+                          />
+                        )}
+                      </TouchableOpacity>
+                    );
+                  }}
+                  style={styles.list}
+                  nestedScrollEnabled
+                  keyboardShouldPersistTaps="handled"
+                  initialNumToRender={10}
+                  maxToRenderPerBatch={10}
+                  windowSize={5}
+                />
+              </View>
+            )}
 
-                {/* Mensagem quando não há resultados */}
-                {showList && filtered.length === 0 && searchText.trim().length > 0 && (
-                  <View style={styles.dropdown}>
-                    <View style={styles.emptyContainer}>
-                      <Text style={styles.emptyText}>Nenhum resultado encontrado</Text>
-                    </View>
-                  </View>
+            {/* Mensagem quando não há resultados */}
+            {showList && filtered.length === 0 && searchText.trim().length > 0 && (
+              <View style={styles.dropdown}>
+                <View style={styles.emptyContainer}>
+                  <Text style={styles.emptyText}>Nenhum resultado encontrado</Text>
+                </View>
+              </View>
                 )}
               </>
             )}
@@ -594,12 +626,6 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
 const styles = StyleSheet.create({
   container: {
     marginBottom: theme.spacing.md,
-    ...(Platform.OS === 'web'
-      ? {
-          position: 'relative' as ViewStyle['position'],
-          zIndex: 99999,
-        }
-      : {}),
   },
   label: {
     fontSize: theme.fontSize.sm,
@@ -611,12 +637,6 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     position: 'relative' as ViewStyle['position'],
-    ...(Platform.OS === 'web'
-      ? {
-          zIndex: 99999,
-          position: 'relative' as ViewStyle['position'],
-        }
-      : {}),
   },
   input: {
     borderWidth: 1.5,
@@ -633,12 +653,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 2,
-    ...(Platform.OS === 'web'
-      ? {
-          position: 'relative' as ViewStyle['position'],
-          zIndex: 99999,
-        }
-      : {}),
   },
   manualInput: {
     backgroundColor: '#e8f5e8',
@@ -684,15 +698,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 12,
-    elevation: 15,
+    elevation: Platform.OS === 'android' ? 1000 : 15,
     overflow: 'hidden',
-    ...(Platform.OS === 'web'
-      ? {
-          zIndex: 9999999,
-        }
-      : {
-          zIndex: 1000,
-        }),
+    zIndex: Platform.OS === 'web' ? 99999999 : 10000,
   },
   list: {
     maxHeight: 300,

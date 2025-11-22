@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { AppHeader } from '../components/AppHeader';
+import { AutocompleteField } from '../components/AutocompleteField';
 import { theme } from '../theme';
 import { supabaseDataService } from '../services/supabaseDataService';
 import { googleSheetsService } from '../services/googleSheetsService';
@@ -22,6 +23,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useAuthContext } from '../context/AuthContext';
 import { localStorageService } from '../services/localStorageService';
 import { PrimaryButton } from '../components/PrimaryButton';
+import { Cargo } from '../types/models';
 
 interface RegistroPresencaSupabase {
   uuid?: string;
@@ -44,6 +46,7 @@ export const EditRegistrosScreen: React.FC = () => {
   const navigation = useNavigation();
   const { user } = useAuthContext();
   const [registros, setRegistros] = useState<RegistroPresencaSupabase[]>([]);
+  const [cargos, setCargos] = useState<Cargo[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -76,7 +79,27 @@ export const EditRegistrosScreen: React.FC = () => {
 
   useEffect(() => {
     loadLocalEnsaio();
+    loadCargos();
   }, []);
+
+  const loadCargos = async () => {
+    try {
+      const cargosData = await supabaseDataService.getCargosFromLocal();
+      setCargos(cargosData);
+      console.log('✅ Cargos carregados:', cargosData.length);
+    } catch (error) {
+      console.error('❌ Erro ao carregar cargos:', error);
+    }
+  };
+
+  // Criar opções de cargos para o AutocompleteField
+  const cargosOptions = useMemo(() => {
+    return cargos.map(c => ({
+      id: c.id,
+      label: c.nome,
+      value: c.id,
+    }));
+  }, [cargos]);
 
   useEffect(() => {
     console.log('🔍 editFormVisible mudou para:', editFormVisible);
@@ -191,7 +214,11 @@ export const EditRegistrosScreen: React.FC = () => {
     setEditNome(registro.nome_completo || '');
     setEditComum(registro.comum || '');
     setEditCidade(registro.cidade || '');
-    setEditCargo(registro.cargo || '');
+    
+    // Encontrar o ID do cargo pelo nome
+    const cargoEncontrado = cargos.find(c => c.nome.toUpperCase() === (registro.cargo || '').toUpperCase());
+    setEditCargo(cargoEncontrado?.id || '');
+    
     setEditInstrumento(registro.instrumento || '');
     setEditNaipe(registro.naipe_instrumento || '');
     setEditClasse(registro.classe_organista || '');
@@ -220,11 +247,15 @@ export const EditRegistrosScreen: React.FC = () => {
     try {
       setSaving(true);
 
+      // Encontrar o nome do cargo pelo ID
+      const cargoSelecionado = cargos.find(c => c.id === editCargo);
+      const cargoNome = cargoSelecionado?.nome || editCargo;
+
       const updateData = {
         nome_completo: editNome.trim().toUpperCase(),
         comum: editComum.trim().toUpperCase(),
         cidade: editCidade.trim().toUpperCase(),
-        cargo: editCargo.trim().toUpperCase(),
+        cargo: cargoNome.toUpperCase(),
         instrumento: editInstrumento.trim() ? editInstrumento.trim().toUpperCase() : undefined,
         naipe_instrumento: editNaipe.trim() ? editNaipe.trim().toUpperCase() : undefined,
         classe_organista: editClasse.trim() ? editClasse.trim().toUpperCase() : undefined,
@@ -559,12 +590,14 @@ export const EditRegistrosScreen: React.FC = () => {
 
                 <View style={styles.formField}>
                   <Text style={styles.formLabel}>Cargo/Ministério *</Text>
-                  <TextInput
-                    style={styles.formInput}
+                  <AutocompleteField
                     value={editCargo}
-                    onChangeText={setEditCargo}
-                    placeholder="Cargo"
-                    placeholderTextColor={theme.colors.textSecondary}
+                    options={cargosOptions}
+                    onSelect={option => {
+                      setEditCargo(String(option.value));
+                    }}
+                    placeholder="Selecione o cargo..."
+                    icon="user"
                   />
                 </View>
 

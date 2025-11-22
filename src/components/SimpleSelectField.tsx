@@ -174,25 +174,34 @@ export const SimpleSelectField: React.FC<SimpleSelectFieldProps> = ({
 
   const maxHeight = Math.min(filtered.length * 48, 300);
 
-  // Z-index PERMANENTE e ALTO - sempre em evidência
-  const dynamicZIndex = 99999; // Valor fixo e alto
-  const dropdownZIndex = 999999; // Valor ainda mais alto para o dropdown
+  // Z-index DINÂMICO baseado no foco - campo ativo sempre acima
+  const baseZIndex = Platform.OS === 'web' ? 1000 : 1; // Z-index base para campos não focados
+  const focusedZIndex = Platform.OS === 'web' ? 9999999 : 10000; // Z-index muito alto para campo focado
+  const dropdownZIndex = Platform.OS === 'web' ? 99999999 : 10001; // Z-index ainda mais alto para dropdown do campo focado
+  
+  const containerZIndex = isFocused ? focusedZIndex : baseZIndex;
+  const inputZIndex = isFocused ? focusedZIndex : baseZIndex;
 
   return (
-      <View
-        style={[
-          styles.container,
-          style,
+    <View
+      style={[
+        styles.container,
+        style,
           Platform.OS === 'web'
-            ? {
-                zIndex: dynamicZIndex,
-                position: 'relative' as any,
-              }
-            : {},
-        ]}
-        ref={containerRef}
-        collapsable={false}
-      >
+          ? {
+              zIndex: containerZIndex,
+              position: 'relative' as any,
+              overflow: 'visible' as any,
+            }
+          : {
+              elevation: isFocused ? 100 : 0,
+              zIndex: isFocused ? 10000 : 1,
+              overflow: 'visible' as any,
+            },
+      ]}
+      ref={containerRef}
+      collapsable={false}
+    >
       {label && <Text style={styles.label}>{label}</Text>}
 
       <View
@@ -200,15 +209,28 @@ export const SimpleSelectField: React.FC<SimpleSelectFieldProps> = ({
           styles.inputContainer,
           Platform.OS === 'web'
             ? {
-                zIndex: dynamicZIndex,
+                zIndex: inputZIndex,
                 position: 'relative' as ViewStyle['position'],
+                overflow: 'visible' as any,
               }
-            : {},
+            : {
+                zIndex: inputZIndex,
+                overflow: 'visible' as any,
+              },
         ]}
       >
         <TextInput
           ref={inputRef}
-          style={[styles.input, error && styles.inputError]}
+          style={[
+            styles.input,
+            error && styles.inputError,
+            Platform.OS === 'web'
+              ? {
+                  zIndex: inputZIndex,
+                  position: 'relative' as ViewStyle['position'],
+                }
+              : {},
+          ]}
           value={searchText}
           onChangeText={handleChange}
           onFocus={handleFocus}
@@ -272,7 +294,8 @@ export const SimpleSelectField: React.FC<SimpleSelectFieldProps> = ({
               styles.dropdown,
               Platform.OS === 'web'
                 ? {
-                    zIndex: 9999999,
+                    zIndex: dropdownZIndex,
+                    position: 'absolute' as ViewStyle['position'],
                   }
                 : {},
             ]}
@@ -368,12 +391,6 @@ export const SimpleSelectField: React.FC<SimpleSelectFieldProps> = ({
 const styles = StyleSheet.create({
   container: {
     marginBottom: theme.spacing.md,
-    ...(Platform.OS === 'web'
-      ? {
-          position: 'relative' as any,
-          zIndex: 99999,
-        }
-      : {}),
   },
   label: {
     fontSize: theme.fontSize.sm,
@@ -385,12 +402,6 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     position: 'relative' as any,
-    ...(Platform.OS === 'web'
-      ? {
-          zIndex: 99999,
-          position: 'relative' as any,
-        }
-      : {}),
   },
   input: {
     borderWidth: 1.5,
@@ -407,12 +418,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 2,
-    ...(Platform.OS === 'web'
-      ? {
-          position: 'relative' as any,
-          zIndex: 99999,
-        }
-      : {}),
   },
   inputError: {
     borderColor: theme.colors.error,
@@ -432,15 +437,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 12,
-    elevation: 15,
+    elevation: Platform.OS === 'android' ? 1000 : 15,
     overflow: 'hidden',
-    ...(Platform.OS === 'web'
-      ? {
-          zIndex: 9999999,
-        }
-      : {
-          zIndex: 1000,
-        }),
+    zIndex: Platform.OS === 'web' ? 99999999 : 10000,
   },
   list: {
     maxHeight: 300,

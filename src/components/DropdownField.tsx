@@ -56,7 +56,7 @@ export const DropdownField: React.FC<DropdownFieldProps> = ({
     }
 
     if (containerRef.current) {
-      containerRef.current.measure((x, y, width, height, pageX, pageY) => {
+        containerRef.current.measure((x, y, width, height, pageX, pageY) => {
         const newLayout = Platform.OS === 'web'
           ? (pageX !== undefined && pageY !== undefined
               ? { x: pageX, y: pageY, width: width || 300, height: height || 48 }
@@ -119,46 +119,46 @@ export const DropdownField: React.FC<DropdownFieldProps> = ({
       </TouchableOpacity>
 
       {isOpen && options.length > 0 && (
-        <Modal
+      <Modal
           visible={true}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setIsOpen(false)}
-          statusBarTranslucent
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsOpen(false)}
+        statusBarTranslucent
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setIsOpen(false)}
         >
-          <TouchableOpacity
-            style={styles.modalOverlay}
-            activeOpacity={1}
-            onPress={() => setIsOpen(false)}
-          >
             <TouchableOpacity
               activeOpacity={1}
               onPress={(e) => e.stopPropagation()}
-              style={[
-                styles.dropdownContainer,
-                {
-                  top: layout.y + layout.height + 2,
-                  left: layout.x || 0,
-                  width: layout.width || '100%',
-                  maxHeight: maxHeight,
+            style={[
+              styles.dropdownContainer,
+              {
+                top: layout.y + layout.height + 2,
+                left: layout.x || 0,
+                width: layout.width || '100%',
+                maxHeight: maxHeight,
                   ...(Platform.OS === 'web'
                     ? {
                         position: 'fixed' as const,
                         zIndex: 9999,
                       }
                     : {}),
-                },
-              ]}
+              },
+            ]}
             >
             {options.length === 0 ? (
               <View style={styles.optionItem}>
                 <Text style={styles.optionText}>Nenhuma opção disponível</Text>
               </View>
             ) : (
-              <FlatList
-                data={options}
-                keyExtractor={item => item.id}
-                renderItem={({ item }) => (
+            <FlatList
+              data={options}
+              keyExtractor={item => item.id}
+              renderItem={({ item }) => (
                 <TouchableOpacity
                   style={[
                     styles.optionItem,
@@ -215,15 +215,15 @@ export const DropdownField: React.FC<DropdownFieldProps> = ({
                     />
                   )}
                 </TouchableOpacity>
-                )}
-                ItemSeparatorComponent={() => <View style={styles.separator} />}
-                showsVerticalScrollIndicator={false}
-                nestedScrollEnabled
-              />
+              )}
+              ItemSeparatorComponent={() => <View style={styles.separator} />}
+              showsVerticalScrollIndicator={false}
+              nestedScrollEnabled
+            />
             )}
             </TouchableOpacity>
-          </TouchableOpacity>
-        </Modal>
+        </TouchableOpacity>
+      </Modal>
       )}
     </View>
   );

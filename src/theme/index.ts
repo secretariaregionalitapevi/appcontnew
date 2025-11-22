@@ -11,10 +11,10 @@ export const Z_INDEX = {
 
 export const theme = {
   colors: {
-    primary: '#1ab394', // Verde principal do design
-    primaryDark: '#18a689',
-    secondary: '#1ab394',
-    secondaryDark: '#18a689',
+    primary: '#033d60', // Azul da Congregação Cristã no Brasil
+    primaryDark: '#022a47', // Azul mais escuro para gradientes
+    secondary: '#033d60',
+    secondaryDark: '#022a47',
     background: '#f3f3f4',
     surface: '#FFFFFF',
     text: '#212121',

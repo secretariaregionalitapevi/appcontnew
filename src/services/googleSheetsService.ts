@@ -3,6 +3,7 @@ import { supabaseDataService } from './supabaseDataService';
 import { getNaipeByInstrumento } from '../utils/instrumentNaipe';
 import { normalizarRegistroCargoFeminino } from '../utils/normalizeCargoFeminino';
 import { formatRegistradoPor } from '../utils/userNameUtils';
+import { generateExternalUUID } from '../utils/uuid';
 
 // URL do Google Apps Script (do backupcont/config-deploy.js)
 const GOOGLE_SHEETS_API_URL =
@@ -194,6 +195,105 @@ export const googleSheetsService = {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Erro ao conectar com Google Sheets',
+      };
+    }
+  },
+
+  /**
+   * Atualiza um registro existente no Google Sheets
+   */
+  async updateRegistroInSheet(
+    uuid: string,
+    updateData: {
+      nome_completo?: string;
+      comum?: string;
+      cidade?: string;
+      cargo?: string;
+      instrumento?: string;
+      naipe_instrumento?: string;
+      classe_organista?: string;
+      data_ensaio?: string;
+      anotacoes?: string;
+    }
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('📤 Atualizando registro no Google Sheets:', { uuid, updateData });
+
+      // Mapear dados para o formato esperado pelo Google Sheets
+      const sheetData: Record<string, string> = {};
+      if (updateData.nome_completo) {
+        sheetData['NOME COMPLETO'] = updateData.nome_completo.toUpperCase();
+      }
+      if (updateData.comum) {
+        sheetData['COMUM'] = updateData.comum.toUpperCase();
+      }
+      if (updateData.cidade !== undefined) {
+        sheetData['CIDADE'] = updateData.cidade.toUpperCase();
+      }
+      if (updateData.cargo) {
+        sheetData['CARGO'] = updateData.cargo.toUpperCase();
+      }
+      if (updateData.instrumento !== undefined) {
+        sheetData['INSTRUMENTO'] = updateData.instrumento.toUpperCase();
+      }
+      if (updateData.naipe_instrumento !== undefined) {
+        sheetData['NAIPE_INSTRUMENTO'] = updateData.naipe_instrumento.toUpperCase();
+      }
+      if (updateData.classe_organista !== undefined) {
+        sheetData['CLASSE_ORGANISTA'] = updateData.classe_organista.toUpperCase();
+      }
+      if (updateData.data_ensaio) {
+        // Formatar data se necessário
+        const data = new Date(updateData.data_ensaio);
+        const dia = String(data.getDate()).padStart(2, '0');
+        const mes = String(data.getMonth() + 1).padStart(2, '0');
+        const ano = data.getFullYear();
+        const horas = String(data.getHours()).padStart(2, '0');
+        const minutos = String(data.getMinutes()).padStart(2, '0');
+        sheetData['DATA_ENSAIO'] = `${dia}/${mes}/${ano} ${horas}:${minutos}`;
+      }
+      if (updateData.anotacoes !== undefined) {
+        sheetData['ANOTACOES'] = updateData.anotacoes.toUpperCase();
+      }
+
+      const requestBody = {
+        op: 'update',
+        sheet: SHEET_NAME,
+        match: { UUID: uuid },
+        data: sheetData,
+      };
+
+      console.log('📤 Request body para Google Sheets:', requestBody);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      const response = await fetch(GOOGLE_SHEETS_API_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8',
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      // Com no-cors, a resposta é sempre opaca, então consideramos sucesso
+      if (response.type === 'opaque' || response.ok) {
+        console.log('✅ Google Sheets: Requisição de atualização enviada com sucesso');
+        return { success: true };
+      } else {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error('❌ Erro ao atualizar registro no Google Sheets:', error);
+      // Não lança erro para não interromper o processo
+      console.warn('⚠️ Continuando sem atualização no Google Sheets');
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
       };
     }
   },

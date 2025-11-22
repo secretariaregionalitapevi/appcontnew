@@ -58,3 +58,23 @@ export function isValidUUID(uuid: string): boolean {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   return uuidRegex.test(uuid);
 }
+
+/**
+ * Gera UUID no formato do backupcont: local_timestamp_randomstring
+ * Exemplo: local_1763754889826_gwpnvmflhm
+ */
+export function generateLocalUUID(): string {
+  const timestamp = Date.now();
+  const randomString = Math.random().toString(36).substring(2, 11); // 9 caracteres aleatórios
+  return `local_${timestamp}_${randomString}`;
+}
+
+/**
+ * Gera UUID para registros externos (fora da regional): external_timestamp_randomstring
+ * Exemplo: external_1763754889826_gwpnvmflhm
+ */
+export function generateExternalUUID(): string {
+  const timestamp = Date.now();
+  const randomString = Math.random().toString(36).substring(2, 11); // 9 caracteres aleatórios
+  return `external_${timestamp}_${randomString}`;
+}

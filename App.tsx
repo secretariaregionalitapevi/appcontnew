@@ -3,6 +3,8 @@ import { StatusBar } from 'expo-status-bar';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { AuthProvider } from './src/context/AuthContext';
 import { AppNavigator } from './src/navigation/AppNavigator';
+import { initializeStorage } from './src/utils/robustStorage';
+import { logDeviceInfo } from './src/utils/deviceDetection';
 
 // Importar Toast apenas para plataformas nativas (não web)
 type ToastComponent = React.ComponentType | null;
@@ -21,12 +23,29 @@ export default function App() {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    // Aguardar um pouco para garantir que tudo está inicializado
-    const timer = setTimeout(() => {
-      setIsReady(true);
-    }, 100);
+    // Inicializar sistema robusto de storage e detecção de dispositivos
+    const initSystem = async () => {
+      try {
+        // Logar informações do dispositivo
+        logDeviceInfo();
+        
+        // Inicializar storage robusto
+        await initializeStorage();
+        
+        console.log('✅ Sistema inicializado com sucesso');
+      } catch (error) {
+        console.error('⚠️ Erro ao inicializar sistema:', error);
+      } finally {
+        // Aguardar um pouco para garantir que tudo está inicializado
+        const timer = setTimeout(() => {
+          setIsReady(true);
+        }, 100);
 
-    return () => clearTimeout(timer);
+        return () => clearTimeout(timer);
+      }
+    };
+
+    initSystem();
   }, []);
 
   // Se houver erro de inicialização, mostrar tela de erro

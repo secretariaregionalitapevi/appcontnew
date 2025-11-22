@@ -3,6 +3,7 @@ import { supabaseDataService } from './supabaseDataService';
 import { googleSheetsService } from './googleSheetsService';
 import { RegistroPresenca } from '../types/models';
 import { authService } from './authService';
+import { uuidv4 } from '../utils/uuid';
 
 export const offlineSyncService = {
   async isOnline(): Promise<boolean> {
@@ -99,73 +100,82 @@ export const offlineSyncService = {
 
     for (const registro of registros) {
       try {
-        // 🛡️ VERIFICAÇÃO DE DUPLICADOS NO SUPABASE PRIMEIRO
-        // IMPORTANTE: Verificar ANTES de enviar para Google Sheets para evitar duplicação
-        let isDuplicate = false;
-        try {
-          // Tentar criar no Supabase primeiro (já tem verificação de duplicados interna)
-          const createdRegistro = await supabaseDataService.createRegistroPresenca(registro, false);
-          if (createdRegistro) {
-            console.log(`✅ Registro ${registro.id} verificado e criado no Supabase (sem duplicata)`);
+        // 🚀 FLUXO OTIMIZADO: Google Sheets PRIMEIRO (como backupcont)
+        // 1. Enviar para Google Sheets PRIMEIRO
+        console.log(`📤 Enviando registro ${registro.id} para Google Sheets...`);
+        const sheetsResult = await googleSheetsService.sendRegistroToSheet(registro);
+        
+        if (sheetsResult.success) {
+          console.log(`✅ Registro ${registro.id} enviado para Google Sheets`);
+          
+          // Google Sheets OK - marcar como sincronizado
+          if (registro.id) {
+            await supabaseDataService.updateRegistroStatus(registro.id, 'synced');
+            successCount++;
+            console.log(`✅ Registro ${registro.id} sincronizado com sucesso`);
           }
-        } catch (supabaseError: any) {
-          // Verificar se é erro de duplicata
-          if (
-            supabaseError instanceof Error &&
-            (supabaseError.message.includes('DUPLICATA') ||
-              supabaseError.message.includes('duplicat') ||
-              supabaseError.message.includes('já foi cadastrado'))
-          ) {
-            isDuplicate = true;
-            console.warn(`🚨 Duplicata detectada para registro ${registro.id}:`, supabaseError.message);
-            // Se é duplicata, remover registro local e NÃO enviar para Google Sheets
-            if (registro.id) {
-              try {
-                await supabaseDataService.deleteRegistroFromLocal(registro.id);
-                console.log(`🗑️ Registro duplicado ${registro.id} removido da fila local`);
-              } catch (deleteError) {
-                console.warn(`⚠️ Erro ao remover registro duplicado ${registro.id}:`, deleteError);
-              }
-            }
-            // Pular este registro - não enviar para Google Sheets
-            continue;
-          } else {
-            // Outro erro do Supabase - continuar tentando enviar para Google Sheets
-            console.warn(`⚠️ Erro ao verificar duplicata no Supabase para ${registro.id}:`, supabaseError);
-          }
-        }
 
-        // Se não é duplicata, enviar para Google Sheets
-        if (!isDuplicate) {
+          // Tentar Supabase em background (não bloqueia, não é crítico)
+          // O método createRegistroPresenca já trata UUID local automaticamente (gera UUID válido)
+          setTimeout(async () => {
+            try {
+              const createdRegistro = await supabaseDataService.createRegistroPresenca(registro, false);
+              if (createdRegistro) {
+                console.log(`✅ Registro ${registro.id} também enviado para Supabase (background)`);
+              }
+            } catch (supabaseError) {
+              // Erro no Supabase não é crítico - Google Sheets já salvou
+              console.warn(`⚠️ Erro ao enviar ${registro.id} para Supabase (não crítico):`, supabaseError);
+            }
+          }, 100);
+        } else {
+          // Google Sheets falhou - verificar se é erro de conectividade
+          const isNetworkError = 
+            sheetsResult.error?.includes('Failed to fetch') ||
+            sheetsResult.error?.includes('Timeout') ||
+            sheetsResult.error?.includes('Network') ||
+            sheetsResult.error?.includes('AbortError');
+
+          if (isNetworkError) {
+            // Erro de conectividade - manter na fila
+            console.warn(`⚠️ Erro de conectividade ao enviar ${registro.id} para Google Sheets, mantendo na fila`);
+            continue;
+          }
+
+          // Outro erro do Google Sheets - tentar Supabase como fallback
+          console.warn(`⚠️ Falha ao enviar ${registro.id} para Google Sheets, tentando Supabase:`, sheetsResult.error);
           try {
-            const sheetsResult = await googleSheetsService.sendRegistroToSheet(registro);
-            if (sheetsResult.success) {
-              console.log(`✅ Registro ${registro.id} enviado para Google Sheets`);
-              // Marcar como sincronizado após sucesso no Google Sheets
+            // O método createRegistroPresenca já trata UUID local automaticamente (gera UUID válido)
+            const createdRegistro = await supabaseDataService.createRegistroPresenca(registro, false);
+            if (createdRegistro) {
+              console.log(`✅ Registro ${registro.id} enviado para Supabase (fallback)`);
               if (registro.id) {
                 await supabaseDataService.updateRegistroStatus(registro.id, 'synced');
                 successCount++;
-                console.log(`✅ Registro ${registro.id} sincronizado com sucesso`);
-              }
-            } else {
-              console.warn(
-                `⚠️ Falha ao enviar ${registro.id} para Google Sheets:`,
-                sheetsResult.error
-              );
-              // Se falhou no Google Sheets mas já foi criado no Supabase, marcar como sincronizado mesmo assim
-              try {
-                const createdRegistro = await supabaseDataService.createRegistroPresenca(registro, false);
-                if (createdRegistro && registro.id) {
-                  await supabaseDataService.updateRegistroStatus(registro.id, 'synced');
-                  successCount++;
-                  console.log(`✅ Registro ${registro.id} sincronizado (Supabase OK, Google Sheets falhou)`);
-                }
-              } catch (retryError) {
-                console.warn(`⚠️ Erro ao tentar criar no Supabase após falha no Google Sheets:`, retryError);
               }
             }
-          } catch (sheetsError) {
-            console.warn(`⚠️ Erro ao enviar ${registro.id} para Google Sheets:`, sheetsError);
+          } catch (supabaseError: any) {
+            // Verificar se é erro de duplicata
+            if (
+              supabaseError instanceof Error &&
+              (supabaseError.message.includes('DUPLICATA') ||
+                supabaseError.message.includes('duplicat') ||
+                supabaseError.message.includes('já foi cadastrado'))
+            ) {
+              // Duplicata - remover da fila local
+              console.warn(`🚨 Duplicata detectada para registro ${registro.id}, removendo da fila`);
+              if (registro.id) {
+                try {
+                  await supabaseDataService.deleteRegistroFromLocal(registro.id);
+                  successCount++; // Contar como processado
+                } catch (deleteError) {
+                  console.warn(`⚠️ Erro ao remover registro duplicado ${registro.id}:`, deleteError);
+                }
+              }
+            } else {
+              console.warn(`⚠️ Erro ao tentar Supabase para ${registro.id}:`, supabaseError);
+              // Manter na fila para tentar novamente depois
+            }
           }
         }
 
@@ -294,7 +304,7 @@ export const offlineSyncService = {
     // Baseado na lógica do backupcont/app.js
     // Pular verificação se skipDuplicateCheck = true (usuário confirmou duplicata)
     if (!skipDuplicateCheck) {
-      try {
+    try {
       const registrosLocais = await supabaseDataService.getRegistrosPendentesFromLocal();
 
       // Buscar dados da pessoa, comum e cargo para comparação
@@ -379,110 +389,122 @@ export const offlineSyncService = {
           }
         }
       }
-      } catch (error) {
-        console.warn('⚠️ Erro ao verificar duplicatas locais (continuando...):', error);
-        // Continuar mesmo com erro na verificação local
+    } catch (error) {
+      console.warn('⚠️ Erro ao verificar duplicatas locais (continuando...):', error);
+      // Continuar mesmo com erro na verificação local
       }
     }
 
-    // Sempre salvar localmente primeiro (para garantir que não perdemos o registro)
-    const localId = registro.id || `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    await supabaseDataService.saveRegistroToLocal({
-      ...registro,
-      id: localId,
-      status_sincronizacao: 'pending',
-    });
+    // 🚨 CORREÇÃO: Sempre usar UUID v4 válido (formato: 75aef8f7-86fc-49fe-8a0c-973c9658d6e8)
+    // Não usar UUID local - sempre gerar UUID válido para compatibilidade com Supabase e Google Sheets
+    const uuidFinal = registro.id && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(registro.id)
+      ? registro.id
+      : uuidv4();
 
     if (isOnline) {
       try {
-        // Verificar se a sessão é válida e tentar renovar se necessário
-        let sessionValid = await authService.isSessionValid();
-        if (!sessionValid) {
-          console.warn('⚠️ Sessão inválida, tentando renovar...');
-          // Tentar renovar a sessão antes de desistir
-          const refreshed = await authService.refreshSession();
-          if (refreshed) {
-            console.log('✅ Sessão renovada com sucesso');
-            sessionValid = true;
-          } else {
-            console.warn('⚠️ Não foi possível renovar a sessão, mas tentando enviar mesmo assim...');
-            // IMPORTANTE: Tentar enviar mesmo com sessão inválida
-            // O Supabase pode aceitar a requisição mesmo assim
-            // Se falhar, será tratado nos try/catch abaixo
-          }
-        }
+        // 🚀 FLUXO OTIMIZADO: Google Sheets PRIMEIRO (como backupcont)
+        // 1. Enviar para Google Sheets PRIMEIRO (mais rápido e confiável)
+        console.log('📤 Enviando para Google Sheets primeiro...');
+        const sheetsResult = await googleSheetsService.sendRegistroToSheet({
+          ...registro,
+          id: uuidFinal,
+        });
 
-        // 🛡️ ORDEM CORRETA: Verificar duplicação no Supabase PRIMEIRO, depois Google Sheets
-        // IMPORTANTE: Verificar duplicação ANTES de enviar para Google Sheets para evitar duplicação
-        let sheetsSuccess = false;
-
-        // 1. Verificar duplicação e criar no Supabase PRIMEIRO
-        console.log('📤 Verificando duplicação e tentando criar registro no Supabase...');
-        try {
-          const createdRegistro = await supabaseDataService.createRegistroPresenca(
-            {
-              ...registro,
-              id: localId,
-            },
-            skipDuplicateCheck
-          );
-
-          // Se Supabase foi bem-sucedido, então enviar para Google Sheets
-          if (createdRegistro) {
-            console.log('✅ Registro criado no Supabase (sem duplicata)');
-
-            // 2. Agora enviar para Google Sheets
+        if (sheetsResult.success) {
+          console.log('✅ Registro enviado para Google Sheets com sucesso');
+          
+          // Google Sheets OK - tentar Supabase em background (não bloqueia)
+          // IMPORTANTE: Não tentar enviar UUID local para Supabase
+          // O createRegistroPresenca já gera UUID válido automaticamente se necessário
+          setTimeout(async () => {
             try {
-              const sheetsResult = await googleSheetsService.sendRegistroToSheet({
-                ...registro,
-                id: localId,
-              });
-              if (sheetsResult.success) {
-                sheetsSuccess = true;
-                console.log('✅ Registro enviado para Google Sheets com sucesso');
-              } else {
-                console.warn('⚠️ Falha ao enviar para Google Sheets:', sheetsResult.error);
+              // Verificar duplicação no Supabase antes de enviar
+              // O método createRegistroPresenca já trata UUID local automaticamente
+              const createdRegistro = await supabaseDataService.createRegistroPresenca(
+                {
+                  ...registro,
+                  id: uuidFinal, // Pode ser local, será convertido para válido dentro do método
+                },
+                skipDuplicateCheck
+              );
+              if (createdRegistro) {
+                console.log('✅ Registro também enviado para Supabase (background)');
               }
-            } catch (sheetsError) {
-              console.warn('⚠️ Erro ao enviar para Google Sheets:', sheetsError);
+            } catch (supabaseError) {
+              // Erro no Supabase não é crítico - Google Sheets já salvou
+              console.warn('⚠️ Erro ao enviar para Supabase (não crítico, Google Sheets OK):', supabaseError);
             }
+          }, 100);
 
-            // Marcar como sincronizado após sucesso no Supabase (e Google Sheets se possível)
-            await supabaseDataService.updateRegistroStatus(localId, 'synced');
-            console.log(
-              `✅ Registro sincronizado com sucesso (Supabase: OK, Google Sheets: ${sheetsSuccess ? 'OK' : 'Falhou'})`
-            );
-            return { success: true };
-          } else {
-            throw new Error('createRegistroPresenca retornou null/undefined');
-          }
-        } catch (supabaseError) {
-          // Verificar se é erro de duplicata
-          if (
-            supabaseError instanceof Error &&
-            (supabaseError.message.includes('DUPLICATA') ||
-              supabaseError.message.includes('duplicat') ||
-              supabaseError.message.includes('já foi cadastrado'))
-          ) {
-            console.error('🚨 Duplicata detectada no Supabase:', supabaseError.message);
-            // Remover registro local duplicado e NÃO enviar para Google Sheets
-            try {
-              await supabaseDataService.deleteRegistroFromLocal(localId);
-              console.log(`🗑️ Registro duplicado ${localId} removido da fila local`);
-            } catch (deleteError) {
-              console.warn('⚠️ Erro ao remover registro duplicado local:', deleteError);
-            }
+          // Sucesso - retornar imediatamente
+          return { success: true };
+        } else {
+          // Google Sheets falhou - verificar se é erro de conectividade
+          const isNetworkError = 
+            sheetsResult.error?.includes('Failed to fetch') ||
+            sheetsResult.error?.includes('Timeout') ||
+            sheetsResult.error?.includes('Network') ||
+            sheetsResult.error?.includes('AbortError');
+
+          if (isNetworkError) {
+            // Erro de conectividade - salvar na fila
+            console.warn('⚠️ Erro de conectividade ao enviar para Google Sheets, salvando na fila:', sheetsResult.error);
+            await supabaseDataService.saveRegistroToLocal({
+              ...registro,
+              id: uuidFinal,
+              status_sincronizacao: 'pending',
+            });
             return {
-              success: false,
-              error: supabaseError.message.includes('DUPLICATA_BLOQUEADA')
-                ? supabaseError.message.replace('DUPLICATA_BLOQUEADA: ', '')
-                : supabaseError.message,
+              success: true,
+              error: 'Registro salvo localmente. Será enviado quando a conexão voltar.',
             };
+          } else {
+            // Outro erro do Google Sheets - tentar Supabase como fallback
+            console.warn('⚠️ Erro ao enviar para Google Sheets, tentando Supabase como fallback:', sheetsResult.error);
+            try {
+              // O método createRegistroPresenca já trata UUID local automaticamente
+              const createdRegistro = await supabaseDataService.createRegistroPresenca(
+                {
+                  ...registro,
+                  id: uuidFinal, // Pode ser local, será convertido para válido dentro do método
+                },
+                skipDuplicateCheck
+              );
+              if (createdRegistro) {
+                console.log('✅ Registro enviado para Supabase (fallback)');
+                return { success: true };
+              }
+            } catch (supabaseError) {
+              // Verificar se é erro de duplicata
+              if (
+                supabaseError instanceof Error &&
+                (supabaseError.message.includes('DUPLICATA') ||
+                  supabaseError.message.includes('duplicat') ||
+                  supabaseError.message.includes('já foi cadastrado') ||
+                  supabaseError.message.includes('DUPLICATA_BLOQUEADA'))
+              ) {
+                console.error('🚨 Duplicata detectada no Supabase:', supabaseError.message);
+                return {
+                  success: false,
+                  error: supabaseError.message.includes('DUPLICATA_BLOQUEADA')
+                    ? supabaseError.message.replace('DUPLICATA_BLOQUEADA: ', '')
+                    : supabaseError.message,
+                };
+              }
+              // Ambos falharam - salvar na fila
+              console.error('❌ Ambos Google Sheets e Supabase falharam, salvando na fila:', supabaseError);
+              await supabaseDataService.saveRegistroToLocal({
+                ...registro,
+                id: uuidFinal,
+                status_sincronizacao: 'pending',
+              });
+              return {
+                success: true,
+                error: 'Registro salvo localmente. Será sincronizado automaticamente quando possível.',
+              };
+            }
           }
-
-          // Outro erro do Supabase - salvar localmente para tentar depois
-          console.error('❌ Erro ao criar registro no Supabase:', supabaseError);
-          throw supabaseError; // Re-throw para ser capturado pelo catch externo
         }
       } catch (error) {
         // Verificar se é erro de duplicata
@@ -493,19 +515,51 @@ export const offlineSyncService = {
           };
         }
 
-        console.error('❌ Erro ao enviar para Supabase, registro permanece como pending:', error);
-        // Registro já está salvo localmente como pending, será sincronizado depois
+        // Verificar se é erro de conectividade
+        const isNetworkError = 
+          error instanceof Error &&
+          (error.message.includes('Failed to fetch') ||
+            error.message.includes('Timeout') ||
+            error.message.includes('Network') ||
+            error.message.includes('AbortError'));
+
+        if (isNetworkError) {
+          // Erro de conectividade - salvar na fila
+          console.warn('⚠️ Erro de conectividade, salvando na fila:', error);
+          await supabaseDataService.saveRegistroToLocal({
+            ...registro,
+            id: uuidFinal,
+            status_sincronizacao: 'pending',
+          });
+          return {
+            success: true,
+            error: 'Registro salvo localmente. Será enviado quando a conexão voltar.',
+          };
+        }
+
+        // Outro erro - salvar na fila
+        console.error('❌ Erro ao processar registro, salvando na fila:', error);
+        await supabaseDataService.saveRegistroToLocal({
+          ...registro,
+          id: uuidFinal,
+          status_sincronizacao: 'pending',
+        });
         return {
           success: true,
           error: 'Registro salvo localmente. Será sincronizado automaticamente quando possível.',
         };
       }
     } else {
-      // Offline: registro já foi salvo localmente como pending
+      // Offline: salvar localmente como pending
+      await supabaseDataService.saveRegistroToLocal({
+        ...registro,
+        id: uuidFinal,
+        status_sincronizacao: 'pending',
+      });
       console.log('📱 Modo offline, registro salvo localmente');
       return {
         success: true,
-        error: 'Salvo offline - Enviado quando voltar online',
+        error: 'Registro salvo localmente. Será sincronizado quando a conexão voltar.',
       };
     }
   },

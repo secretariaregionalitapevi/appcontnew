@@ -65,17 +65,18 @@ export const OfflineBadge: React.FC<OfflineBadgeProps> = ({ count, syncing = fal
     <View style={styles.wrapper}>
       <View style={styles.container}>
         <Text style={styles.queueText}>{count} itens em fila</Text>
-        <View style={getBadgeStyle()}>
-          <FontAwesome5 name={getIcon()} size={12} color={getIconColor()} style={styles.icon} />
-          <Text style={getBadgeTextStyle()}>{getText()}</Text>
+    <View style={getBadgeStyle()}>
+      <FontAwesome5 name={getIcon()} size={12} color={getIconColor()} style={styles.icon} />
+      <Text style={getBadgeTextStyle()}>{getText()}</Text>
         </View>
       </View>
       {/* Status Online/Offline - abaixo do badge */}
       <View style={styles.statusIndicator}>
         <FontAwesome5 
-          name={isOnline ? "wifi" : "wifi-slash"} 
+          name={isOnline ? "wifi" : "wifi"} 
           size={12} 
           color={isOnline ? "#10b981" : "#ef4444"} 
+          solid={!isOnline} // Usar estilo sólido quando offline para diferenciar visualmente
         />
         <Text style={styles.statusText}>
           {isOnline ? 'Online' : 'Offline'}

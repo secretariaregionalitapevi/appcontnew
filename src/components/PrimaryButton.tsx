@@ -65,14 +65,14 @@ const styles = StyleSheet.create({
     ...(Platform.OS === 'web'
       ? {
           background: `linear-gradient(135deg, ${theme.colors.primary} 0%, ${theme.colors.primaryDark} 100%)`,
-          boxShadow: '0 2px 8px rgba(26, 179, 148, 0.2)',
+          boxShadow: '0 2px 8px rgba(3, 61, 96, 0.3)',
           transition: 'all 0.2s ease',
           cursor: 'pointer',
         }
       : {
           shadowColor: theme.colors.primary,
           shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.2,
+          shadowOpacity: 0.3,
           shadowRadius: 4,
           elevation: 2,
         }),

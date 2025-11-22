@@ -7,6 +7,9 @@ import { uuidv4 } from '../utils/uuid';
 import { getNaipeByInstrumento } from '../utils/instrumentNaipe';
 import { normalizarRegistroCargoFeminino } from '../utils/normalizeCargoFeminino';
 import { extractFirstAndLastName } from '../utils/userNameUtils';
+import { robustGetItem, robustSetItem, robustRemoveItem, initializeStorage } from '../utils/robustStorage';
+import { normalizeForSearch, normalizeString, sanitizeString, isValidString } from '../utils/stringNormalization';
+import { getDeviceInfo, logDeviceInfo, isXiaomiDevice } from '../utils/deviceDetection';
 
 // Cache em memória para web (quando SQLite não está disponível)
 const memoryCache: {
@@ -317,14 +320,12 @@ export const supabaseDataService = {
       // Salvar no cache em memória (para web)
       memoryCache.comuns = comuns;
 
-      // Salvar no AsyncStorage (para web)
-      if (Platform.OS === 'web') {
-        try {
-          await AsyncStorage.setItem('cache_comuns', JSON.stringify(comuns));
-          console.log('✅ Comuns salvas no cache (web)');
-        } catch (error) {
-          console.warn('⚠️ Erro ao salvar no AsyncStorage:', error);
-        }
+      // Salvar usando robustStorage (com fallbacks)
+      try {
+        await robustSetItem('cache_comuns', JSON.stringify(comuns));
+        console.log('✅ Comuns salvas no cache');
+      } catch (error) {
+        console.warn('⚠️ Erro ao salvar comuns no cache:', error);
       }
 
       // Tentar salvar no SQLite (para mobile)
@@ -359,17 +360,25 @@ export const supabaseDataService = {
         return memoryCache.comuns;
       }
 
-      // Tentar AsyncStorage
+      // Tentar robustStorage
       try {
-        const cached = await AsyncStorage.getItem('cache_comuns');
+        const cached = await robustGetItem('cache_comuns');
         if (cached) {
           const comuns = JSON.parse(cached);
-          memoryCache.comuns = comuns;
-          console.log(`✅ Retornando ${comuns.length} comuns do AsyncStorage`);
-          return comuns;
+          // Validar e sanitizar dados
+          const validComuns = comuns.filter((c: any) => 
+            isValidString(c.id) && isValidString(c.nome)
+          ).map((c: any) => ({
+            ...c,
+            nome: sanitizeString(c.nome),
+          }));
+          
+          memoryCache.comuns = validComuns;
+          console.log(`✅ Retornando ${validComuns.length} comuns do cache robusto`);
+          return validComuns;
         }
       } catch (error) {
-        console.warn('⚠️ Erro ao ler do AsyncStorage:', error);
+        console.warn('⚠️ Erro ao ler do cache robusto:', error);
       }
 
       console.warn('⚠️ Nenhuma comum encontrada no cache (web)');
@@ -407,11 +416,13 @@ export const supabaseDataService = {
 
     console.log(`✅ ${cargos.length} cargos da lista fixa`);
 
-    // Salvar no cache em memória (para web)
+    // Salvar no cache em memória
     memoryCache.cargos = cargos;
-    // Salvar no AsyncStorage (para web)
-    if (Platform.OS === 'web') {
-      await AsyncStorage.setItem('cached_cargos', JSON.stringify(cargos));
+    // Salvar usando robustStorage (com fallbacks)
+    try {
+      await robustSetItem('cached_cargos', JSON.stringify(cargos));
+    } catch (error) {
+      console.warn('⚠️ Erro ao salvar cargos no cache:', error);
     }
 
     return cargos;
@@ -434,14 +445,12 @@ export const supabaseDataService = {
       // Salvar no cache em memória (para web)
       memoryCache.cargos = cargos;
 
-      // Salvar no AsyncStorage (para web)
-      if (Platform.OS === 'web') {
-        try {
-          await AsyncStorage.setItem('cached_cargos', JSON.stringify(cargos));
-          console.log('✅ Cargos salvos no cache (web)');
-        } catch (error) {
-          console.warn('⚠️ Erro ao salvar no AsyncStorage:', error);
-        }
+      // Salvar usando robustStorage (com fallbacks)
+      try {
+        await robustSetItem('cached_cargos', JSON.stringify(cargos));
+        console.log('✅ Cargos salvos no cache');
+      } catch (error) {
+        console.warn('⚠️ Erro ao salvar cargos no cache:', error);
       }
 
       // Tentar salvar no SQLite (para mobile)
@@ -499,25 +508,30 @@ export const supabaseDataService = {
         console.log(`✅ Retornando ${cargosOrdenados.length} cargos do cache (ordem fixa)`);
         return cargosOrdenados;
       }
-
-      // Tentar AsyncStorage
+      
+      // Tentar robustStorage
       try {
-        const cached = await AsyncStorage.getItem('cached_cargos');
+        const cached = await robustGetItem('cached_cargos');
         if (cached) {
           const cargos = JSON.parse(cached);
-          // Reordenar conforme lista fixa (manter ordem exata)
+          // Validar e sanitizar dados
+          const validCargos = cargos.filter((c: any) => 
+            isValidString(c.id) && isValidString(c.nome)
+          ).map((c: any) => ({
+            ...c,
+            nome: sanitizeString(c.nome),
+          }));
+          // Reordenar conforme lista fixa
           const cargosOrdenados = CARGOS_FIXED.map(nome => {
-            const cargo = cargos.find((c: Cargo) => c.nome === nome);
+            const cargo = validCargos.find((c: any) => c.nome === nome);
             return cargo || cargosNaOrdem.find(c => c.nome === nome)!;
           });
           memoryCache.cargos = cargosOrdenados;
-          console.log(
-            `✅ Retornando ${cargosOrdenados.length} cargos do AsyncStorage (ordem fixa)`
-          );
+          console.log(`✅ Retornando ${cargosOrdenados.length} cargos do cache robusto`);
           return cargosOrdenados;
         }
       } catch (error) {
-        console.warn('⚠️ Erro ao ler do AsyncStorage:', error);
+        console.warn('⚠️ Erro ao ler do cache robusto:', error);
       }
 
       console.log(`✅ Retornando ${cargosNaOrdem.length} cargos da lista fixa (ordem exata)`);
@@ -655,14 +669,12 @@ export const supabaseDataService = {
       // Salvar no cache em memória (para web)
       memoryCache.instrumentos = instrumentos;
 
-      // Salvar no AsyncStorage (para web)
-      if (Platform.OS === 'web') {
-        try {
-          await AsyncStorage.setItem('cache_instrumentos', JSON.stringify(instrumentos));
-          console.log('✅ Instrumentos salvos no cache (web)');
-        } catch (error) {
-          console.warn('⚠️ Erro ao salvar no AsyncStorage:', error);
-        }
+      // Salvar usando robustStorage (com fallbacks)
+      try {
+        await robustSetItem('cache_instrumentos', JSON.stringify(instrumentos));
+        console.log('✅ Instrumentos salvos no cache');
+      } catch (error) {
+        console.warn('⚠️ Erro ao salvar instrumentos no cache:', error);
       }
 
       // Tentar salvar no SQLite (para mobile)
@@ -708,17 +720,24 @@ export const supabaseDataService = {
         return memoryCache.instrumentos;
       }
 
-      // Tentar AsyncStorage
+      // Tentar robustStorage
       try {
-        const cached = await AsyncStorage.getItem('cache_instrumentos');
+        const cached = await robustGetItem('cache_instrumentos');
         if (cached) {
           const instrumentos = JSON.parse(cached);
-          memoryCache.instrumentos = instrumentos;
-          console.log(`✅ Retornando ${instrumentos.length} instrumentos do AsyncStorage`);
-          return instrumentos;
+          // Validar e sanitizar dados
+          const validInstrumentos = instrumentos.filter((i: any) => 
+            isValidString(i.id) && isValidString(i.nome)
+          ).map((i: any) => ({
+            ...i,
+            nome: sanitizeString(i.nome),
+          }));
+          memoryCache.instrumentos = validInstrumentos;
+          console.log(`✅ Retornando ${validInstrumentos.length} instrumentos do cache robusto`);
+          return validInstrumentos;
         }
       } catch (error) {
-        console.warn('⚠️ Erro ao ler do AsyncStorage:', error);
+        console.warn('⚠️ Erro ao ler do cache robusto:', error);
       }
 
       // Se não encontrou, usar lista padrão
@@ -1057,12 +1076,15 @@ export const supabaseDataService = {
 
     const cargo = { ...cargoSelecionado, nome: cargoReal };
 
-    // Gerar UUID v4 válido para Supabase
-    const uuid =
-      registro.id &&
-      registro.id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)
-        ? registro.id
-        : uuidv4();
+    // 🚨 CORREÇÃO: Sempre usar UUID v4 válido (formato: 75aef8f7-86fc-49fe-8a0c-973c9658d6e8)
+    // Validar se UUID é válido, senão gerar novo UUID v4
+    let uuid = registro.id || '';
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuid || !uuidRegex.test(uuid)) {
+      // Gerar UUID v4 válido
+      uuid = uuidv4();
+      console.log('🔄 UUID inválido detectado, gerando UUID v4 válido:', uuid);
+    }
 
     // Buscar cidade da pessoa (se disponível)
     const cidade = isNomeManual ? '' : (pessoa as any)?.cidade || '';
@@ -1133,78 +1155,78 @@ export const supabaseDataService = {
     // Baseado na lógica do backupcont/app.js
     // Pular verificação se skipDuplicateCheck = true (usuário confirmou duplicata)
     if (!skipDuplicateCheck) {
-      try {
-        const nomeBusca = row.nome_completo.trim().toUpperCase();
-        const comumBusca = row.comum.trim().toUpperCase();
-        const cargoBusca = row.cargo.trim().toUpperCase(); // Cargo REAL já está em row.cargo
+    try {
+      const nomeBusca = row.nome_completo.trim().toUpperCase();
+      const comumBusca = row.comum.trim().toUpperCase();
+      const cargoBusca = row.cargo.trim().toUpperCase(); // Cargo REAL já está em row.cargo
 
-        // Extrair apenas a data (sem hora) para comparação
-        const dataRegistro = new Date(row.data_ensaio);
-        const dataInicio = new Date(
-          dataRegistro.getFullYear(),
-          dataRegistro.getMonth(),
-          dataRegistro.getDate()
-        );
-        const dataFim = new Date(dataInicio);
-        dataFim.setDate(dataFim.getDate() + 1);
+      // Extrair apenas a data (sem hora) para comparação
+      const dataRegistro = new Date(row.data_ensaio);
+      const dataInicio = new Date(
+        dataRegistro.getFullYear(),
+        dataRegistro.getMonth(),
+        dataRegistro.getDate()
+      );
+      const dataFim = new Date(dataInicio);
+      dataFim.setDate(dataFim.getDate() + 1);
 
-        console.log('🔍 Verificando duplicados:', {
+      console.log('🔍 Verificando duplicados:', {
+        nome: nomeBusca,
+        comum: comumBusca,
+        cargo: cargoBusca,
+        dataInicio: dataInicio.toISOString(),
+        dataFim: dataFim.toISOString(),
+      });
+
+      const { data: duplicatas, error: duplicataError } = await supabase
+        .from('presencas')
+        .select('uuid, nome_completo, comum, cargo, data_ensaio, created_at')
+        .ilike('nome_completo', nomeBusca)
+        .ilike('comum', comumBusca)
+        .ilike('cargo', cargoBusca)
+        .gte('data_ensaio', dataInicio.toISOString())
+        .lt('data_ensaio', dataFim.toISOString());
+
+      if (duplicataError) {
+        console.warn('⚠️ Erro ao verificar duplicatas:', duplicataError);
+        // Continuar mesmo com erro na verificação
+      } else if (duplicatas && duplicatas.length > 0) {
+        const duplicata = duplicatas[0];
+        console.error('🚨🚨🚨 DUPLICATA DETECTADA - BLOQUEANDO INSERÇÃO 🚨🚨🚨', {
           nome: nomeBusca,
           comum: comumBusca,
           cargo: cargoBusca,
-          dataInicio: dataInicio.toISOString(),
-          dataFim: dataFim.toISOString(),
+          uuidExistente: duplicata.uuid,
+          dataExistente: duplicata.data_ensaio,
+          created_at: duplicata.created_at,
         });
 
-        const { data: duplicatas, error: duplicataError } = await supabase
-          .from('presencas')
-          .select('uuid, nome_completo, comum, cargo, data_ensaio, created_at')
-          .ilike('nome_completo', nomeBusca)
-          .ilike('comum', comumBusca)
-          .ilike('cargo', cargoBusca)
-          .gte('data_ensaio', dataInicio.toISOString())
-          .lt('data_ensaio', dataFim.toISOString());
+        // Formatar data e horário do registro existente
+        const dataExistente = new Date(duplicata.data_ensaio || duplicata.created_at);
+        const dataFormatada = dataExistente.toLocaleDateString('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+        });
+        const horarioFormatado = dataExistente.toLocaleTimeString('pt-BR', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+        });
 
-        if (duplicataError) {
-          console.warn('⚠️ Erro ao verificar duplicatas:', duplicataError);
-          // Continuar mesmo com erro na verificação
-        } else if (duplicatas && duplicatas.length > 0) {
-          const duplicata = duplicatas[0];
-          console.error('🚨🚨🚨 DUPLICATA DETECTADA - BLOQUEANDO INSERÇÃO 🚨🚨🚨', {
-            nome: nomeBusca,
-            comum: comumBusca,
-            cargo: cargoBusca,
-            uuidExistente: duplicata.uuid,
-            dataExistente: duplicata.data_ensaio,
-            created_at: duplicata.created_at,
-          });
-
-          // Formatar data e horário do registro existente
-          const dataExistente = new Date(duplicata.data_ensaio || duplicata.created_at);
-          const dataFormatada = dataExistente.toLocaleDateString('pt-BR', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-          });
-          const horarioFormatado = dataExistente.toLocaleTimeString('pt-BR', {
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-          });
-
-          // Lançar erro para bloquear inserção com informações formatadas
-          throw new Error(
-            `DUPLICATA_BLOQUEADA:DUPLICATA:${nomeBusca}|${comumBusca}|${dataFormatada}|${horarioFormatado}`
-          );
-        }
-      } catch (error) {
-        // Se o erro for de duplicata bloqueada, propagar o erro
-        if (error instanceof Error && error.message.includes('DUPLICATA_BLOQUEADA')) {
-          console.error('🚨🚨🚨 BLOQUEIO DEFINITIVO DE DUPLICATA 🚨🚨🚨');
-          throw error;
-        }
-        // Outros erros na verificação não devem bloquear
-        console.warn('⚠️ Erro ao verificar duplicatas (continuando...):', error);
+        // Lançar erro para bloquear inserção com informações formatadas
+        throw new Error(
+          `DUPLICATA_BLOQUEADA:DUPLICATA:${nomeBusca}|${comumBusca}|${dataFormatada}|${horarioFormatado}`
+        );
+      }
+    } catch (error) {
+      // Se o erro for de duplicata bloqueada, propagar o erro
+      if (error instanceof Error && error.message.includes('DUPLICATA_BLOQUEADA')) {
+        console.error('🚨🚨🚨 BLOQUEIO DEFINITIVO DE DUPLICATA 🚨🚨🚨');
+        throw error;
+      }
+      // Outros erros na verificação não devem bloquear
+      console.warn('⚠️ Erro ao verificar duplicatas (continuando...):', error);
       }
     }
 
@@ -1234,14 +1256,18 @@ export const supabaseDataService = {
         return memoryCache.registros.filter(r => r.status_sincronizacao === 'pending');
       }
       try {
-        const cached = await AsyncStorage.getItem('cached_registros');
+        const cached = await robustGetItem('cached_registros');
         if (cached) {
           const registros = JSON.parse(cached);
-          memoryCache.registros = registros;
-          return registros.filter((r: RegistroPresenca) => r.status_sincronizacao === 'pending');
+          // Validar e sanitizar dados
+          const validRegistros = registros.filter((r: any) => 
+            isValidString(r.id) && r.status_sincronizacao
+          );
+          memoryCache.registros = validRegistros;
+          return validRegistros.filter((r: RegistroPresenca) => r.status_sincronizacao === 'pending');
         }
       } catch (error) {
-        console.warn('⚠️ Erro ao ler registros do AsyncStorage:', error);
+        console.warn('⚠️ Erro ao ler registros do cache robusto:', error);
       }
       return [];
     }
@@ -1264,14 +1290,18 @@ export const supabaseDataService = {
         return memoryCache.registros;
       }
       try {
-        const cached = await AsyncStorage.getItem('cached_registros');
+        const cached = await robustGetItem('cached_registros');
         if (cached) {
           const registros = JSON.parse(cached);
-          memoryCache.registros = registros;
-          return registros;
+          // Validar e sanitizar dados
+          const validRegistros = registros.filter((r: any) => 
+            isValidString(r.id) && r.status_sincronizacao
+          );
+          memoryCache.registros = validRegistros;
+          return validRegistros;
         }
       } catch (error) {
-        console.warn('⚠️ Erro ao ler registros do AsyncStorage:', error);
+        console.warn('⚠️ Erro ao ler registros do cache robusto:', error);
       }
       return [];
     }
@@ -1292,9 +1322,9 @@ export const supabaseDataService = {
       // Para web, remover do cache em memória e AsyncStorage
       memoryCache.registros = memoryCache.registros.filter(r => r.id !== id);
       try {
-        await AsyncStorage.setItem('cached_registros', JSON.stringify(memoryCache.registros));
+        await robustSetItem('cached_registros', JSON.stringify(memoryCache.registros));
       } catch (error) {
-        console.warn('⚠️ Erro ao remover registro do AsyncStorage:', error);
+        console.warn('⚠️ Erro ao remover registro do cache:', error);
       }
       return;
     }
@@ -1305,7 +1335,10 @@ export const supabaseDataService = {
   },
 
   async saveRegistroToLocal(registro: RegistroPresenca): Promise<void> {
-    const id = registro.id || `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // Sempre usar UUID v4 válido
+    const id = registro.id && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(registro.id)
+      ? registro.id
+      : uuidv4();
     const now = new Date().toISOString();
     const registroCompleto: RegistroPresenca = {
       ...registro,
@@ -1324,9 +1357,9 @@ export const supabaseDataService = {
       }
 
       try {
-        await AsyncStorage.setItem('cached_registros', JSON.stringify(memoryCache.registros));
+        await robustSetItem('cached_registros', JSON.stringify(memoryCache.registros));
       } catch (error) {
-        console.warn('⚠️ Erro ao salvar registro no AsyncStorage:', error);
+        console.warn('⚠️ Erro ao salvar registro no cache:', error);
       }
       return;
     }
@@ -1361,9 +1394,9 @@ export const supabaseDataService = {
         registro.status_sincronizacao = status;
         registro.updated_at = new Date().toISOString();
         try {
-          await AsyncStorage.setItem('cached_registros', JSON.stringify(memoryCache.registros));
+          await robustSetItem('cached_registros', JSON.stringify(memoryCache.registros));
         } catch (error) {
-          console.warn('⚠️ Erro ao atualizar registro no AsyncStorage:', error);
+          console.warn('⚠️ Erro ao atualizar registro no cache:', error);
         }
       }
       return;
@@ -1403,5 +1436,160 @@ export const supabaseDataService = {
     }
     // Se não tem separador, retornar como está
     return comumCompleto.trim();
+  },
+
+  /**
+   * Busca registros da tabela presencas do Supabase filtrados por local_ensaio
+   * Permite busca por nome, cargo ou comum
+   */
+  async fetchRegistrosFromSupabase(
+    localEnsaio: string,
+    searchTerm?: string
+  ): Promise<any[]> {
+    if (!isSupabaseConfigured() || !supabase) {
+      throw new Error('Supabase não está configurado');
+    }
+
+    try {
+      console.log('🔍 Buscando registros do Supabase para local:', localEnsaio);
+      console.log('🔍 Termo de busca:', searchTerm || 'nenhum');
+
+      const localTrimmed = localEnsaio.trim();
+
+      // Se não há termo de busca, buscar todos os registros do local
+      if (!searchTerm || !searchTerm.trim()) {
+        const { data, error } = await supabase
+          .from('presencas')
+          .select('*')
+          .ilike('local_ensaio', `%${localTrimmed}%`)
+          .order('created_at', { ascending: false })
+          .limit(500);
+
+        if (error) {
+          console.error('❌ Erro ao buscar registros:', error);
+          throw error;
+        }
+
+        console.log(`✅ Encontrados ${data?.length || 0} registros do local ${localTrimmed}`);
+        return data || [];
+      }
+
+      // Se há termo de busca, fazer 3 queries separadas e combinar
+      const searchTermTrimmed = searchTerm.trim();
+
+      const promises = [
+        supabase
+          .from('presencas')
+          .select('*')
+          .ilike('local_ensaio', `%${localTrimmed}%`)
+          .ilike('nome_completo', `%${searchTermTrimmed}%`)
+          .order('created_at', { ascending: false })
+          .limit(500),
+        supabase
+          .from('presencas')
+          .select('*')
+          .ilike('local_ensaio', `%${localTrimmed}%`)
+          .ilike('cargo', `%${searchTermTrimmed}%`)
+          .order('created_at', { ascending: false })
+          .limit(500),
+        supabase
+          .from('presencas')
+          .select('*')
+          .ilike('local_ensaio', `%${localTrimmed}%`)
+          .ilike('comum', `%${searchTermTrimmed}%`)
+          .order('created_at', { ascending: false })
+          .limit(500),
+      ];
+
+      const results = await Promise.all(promises);
+      const allData: any[] = [];
+      const seenUUIDs = new Set<string>();
+
+      // Combinar resultados removendo duplicatas
+      results.forEach((result, idx) => {
+        if (result && result.data && Array.isArray(result.data)) {
+          console.log(`🔍 Resultado da query ${idx + 1}:`, result.data.length, 'registros');
+          result.data.forEach(item => {
+            const uuid = item.uuid || item.UUID || `${item.nome_completo || ''}_${item.comum || ''}`;
+            if (!seenUUIDs.has(uuid)) {
+              seenUUIDs.add(uuid);
+              allData.push(item);
+            }
+          });
+        } else if (result && result.error) {
+          console.error(`❌ Erro na query ${idx + 1}:`, result.error);
+        }
+      });
+
+      // Ordenar por data de criação (mais recente primeiro)
+      allData.sort((a, b) => {
+        const dateA = new Date(a.created_at || a.CREATED_AT || 0).getTime();
+        const dateB = new Date(b.created_at || b.CREATED_AT || 0).getTime();
+        return dateB - dateA;
+      });
+
+      console.log(`✅ Total de registros únicos encontrados: ${allData.length}`);
+      return allData.slice(0, 500); // Limitar a 500 registros
+    } catch (error) {
+      console.error('❌ Erro ao buscar registros do Supabase:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Atualiza um registro na tabela presencas do Supabase
+   */
+  async updateRegistroInSupabase(
+    uuid: string,
+    updateData: {
+      nome_completo?: string;
+      comum?: string;
+      cidade?: string;
+      cargo?: string;
+      instrumento?: string;
+      naipe_instrumento?: string;
+      classe_organista?: string;
+      data_ensaio?: string;
+      anotacoes?: string;
+    }
+  ): Promise<{ success: boolean; error?: string }> {
+    if (!isSupabaseConfigured() || !supabase) {
+      return { success: false, error: 'Supabase não está configurado' };
+    }
+
+    try {
+      console.log('💾 Atualizando registro no Supabase:', uuid, updateData);
+
+      // Remover campos que não existem na tabela presencas
+      const { anotacoes, ...supabaseUpdateData } = updateData;
+
+      const { data, error } = await supabase
+        .from('presencas')
+        .update({
+          ...supabaseUpdateData,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('uuid', uuid)
+        .select();
+
+      if (error) {
+        console.error('❌ Erro ao atualizar registro no Supabase:', error);
+        return { success: false, error: error.message };
+      }
+
+      if (!data || data.length === 0) {
+        console.warn('⚠️ Nenhum registro foi atualizado (pode ser problema de permissões RLS)');
+        return { success: false, error: 'Nenhum registro foi atualizado' };
+      }
+
+      console.log('✅ Registro atualizado com sucesso no Supabase');
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Erro ao atualizar registro no Supabase:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+      };
+    }
   },
 };

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, Image } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useAuthContext } from '../context/AuthContext';
 import { localStorageService } from '../services/localStorageService';
@@ -137,11 +137,18 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         <View style={styles.headerLeft}>
           <View style={styles.brandSection}>
             <View style={styles.brandLogo}>
-              <Text style={styles.brandLogoText}>CCB</Text>
+              <Image 
+                source={require('../img/ccb.png')} 
+                style={styles.brandLogoImage}
+                resizeMode="contain"
+              />
             </View>
             <View style={styles.brandText}>
-              <Text style={styles.brandTitle}>SAC</Text>
-              <Text style={styles.brandSubtitle}>Sistema de Contagem</Text>
+              <Text style={styles.brandTitle}>Registro de Presença</Text>
+              <View style={styles.brandSubtitleContainer}>
+                <FontAwesome5 name="map-marker-alt" size={11} color="#ff6b6b" />
+                <Text style={styles.brandSubtitle}>{localEnsaio}</Text>
+              </View>
             </View>
           </View>
         </View>
@@ -150,15 +157,9 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         <View style={styles.headerRight}>
           {/* User Info */}
           <View style={styles.userInfo}>
-            <View style={styles.locationInfo}>
-              <FontAwesome5 name="map-marker-alt" size={12} color="#ff6b6b" />
-              <Text style={styles.locationText} numberOfLines={1}>
-                {localEnsaio}
-              </Text>
-            </View>
             <View style={styles.userProfile}>
               <View style={styles.userAvatar}>
-                <Text style={styles.userAvatarText}>{userName.charAt(0).toUpperCase()}</Text>
+                <FontAwesome5 name="user" size={14} color="#ffffff" />
               </View>
               <View style={styles.userDetails}>
                 <Text style={styles.userName} numberOfLines={1}>
@@ -234,15 +235,15 @@ const styles = StyleSheet.create({
   brandLogo: {
     width: 35,
     height: 35,
-    backgroundColor: '#1ab394',
+    backgroundColor: '#ffffff',
     borderRadius: 3,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
   },
-  brandLogoText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '700',
+  brandLogoImage: {
+    width: '100%',
+    height: '100%',
   },
   brandText: {
     flexDirection: 'column',
@@ -254,8 +255,13 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     lineHeight: 20,
   },
+  brandSubtitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   brandSubtitle: {
-    fontSize: 11,
+    fontSize: 12,
     color: 'rgba(255, 255, 255, 0.8)',
     fontWeight: '400',
   },
@@ -272,18 +278,6 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     minWidth: 0,
   },
-  locationInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginRight: 8,
-  },
-  locationText: {
-    fontSize: 11,
-    color: '#a7b1c2',
-    fontWeight: '500',
-    maxWidth: 100,
-  },
   userProfile: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -294,15 +288,10 @@ const styles = StyleSheet.create({
   userAvatar: {
     width: 30,
     height: 30,
-    backgroundColor: '#1ab394',
+    backgroundColor: '#033d60', // Azul da Congregação Cristã no Brasil
     borderRadius: 15,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  userAvatarText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '600',
   },
   userDetails: {
     flexDirection: 'column',
