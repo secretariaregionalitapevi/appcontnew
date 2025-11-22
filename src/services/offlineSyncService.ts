@@ -146,7 +146,7 @@ export const offlineSyncService = {
           if (isNetworkError) {
             // Erro de conectividade - manter na fila
             console.warn(`⚠️ Erro de conectividade ao enviar ${registro.id} para Google Sheets, mantendo na fila`);
-            continue;
+            return; // Sair da função callback (não usar continue em map)
           }
 
           // Outro erro do Google Sheets - tentar Supabase como fallback
