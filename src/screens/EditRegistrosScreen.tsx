@@ -724,6 +724,7 @@ export const EditRegistrosScreen: React.FC = () => {
                 </View>
               </View>
             </View>
+            </View>
           </View>
         </Modal>
       )}
