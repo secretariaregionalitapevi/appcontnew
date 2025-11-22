@@ -1026,34 +1026,7 @@ export const supabaseDataService = {
       }
 
       if (allData.length === 0) {
-        console.log('⚠️ Nenhum candidato encontrado para:', {
-          comumNome,
-          comumBusca,
-          nomeBusca,
-        });
-        // Tentar buscar sem filtro de comum para debug (apenas primeira página)
-        console.log('🔍 Tentando buscar todos os candidatos (primeira página) para debug...');
-        try {
-          const debugResult = await supabase
-            .from(tableName)
-            .select('nome, comum, cidade, instrumento')
-            .limit(10)
-            .order('nome', { ascending: true });
-          
-          if (debugResult.error) {
-            console.error('❌ Erro ao buscar exemplos:', debugResult.error);
-          } else if (debugResult.data && debugResult.data.length > 0) {
-            console.log('📋 Exemplo de candidatos na tabela:', debugResult.data.slice(0, 5).map(c => ({
-              nome: c.nome,
-              comum: c.comum,
-            })));
-            console.log('💡 Dica: Verifique se o formato do comum corresponde. Exemplo na tabela:', debugResult.data[0]?.comum);
-          } else {
-            console.log('⚠️ Tabela candidatos está vazia');
-          }
-        } catch (debugError) {
-          console.warn('⚠️ Erro ao buscar exemplos:', debugError);
-        }
+        console.log('⚠️ Nenhum candidato encontrado');
         return [];
       }
 
