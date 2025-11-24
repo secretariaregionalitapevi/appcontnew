@@ -973,17 +973,31 @@ export const RegisterScreen: React.FC = () => {
             </View>
             <View style={styles.cardBody}>
               <View style={Platform.OS === 'web' ? { position: 'relative' as const, zIndex: 1000, overflow: 'visible' as const } : {}}>
-              <AutocompleteField
-            label="COMUM CONGREGAÇÃO *"
-            value={selectedComum}
-            options={comunsOptions}
-            onSelect={option => {
+              {Platform.OS === 'web' ? (
+                <AutocompleteField
+                  label="COMUM CONGREGAÇÃO *"
+                  value={selectedComum}
+                  options={comunsOptions}
+                  onSelect={option => {
                     setSelectedComum(String(option.value));
-              setSelectedPessoa('');
-              setIsNomeManual(false);
-            }}
+                    setSelectedPessoa('');
+                    setIsNomeManual(false);
+                  }}
                   placeholder="Selecione a comum..."
-          />
+                />
+              ) : (
+                <SimpleSelectField
+                  label="COMUM CONGREGAÇÃO *"
+                  value={selectedComum}
+                  options={comunsOptions}
+                  onSelect={option => {
+                    setSelectedComum(String(option.value));
+                    setSelectedPessoa('');
+                    setIsNomeManual(false);
+                  }}
+                  placeholder="Selecione a comum..."
+                />
+              )}
                 <TouchableOpacity
                   onPress={(e) => {
                     e.preventDefault?.();
