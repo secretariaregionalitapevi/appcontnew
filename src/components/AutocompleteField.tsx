@@ -113,20 +113,16 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
     }
   }, [value, options]);
 
-  // Recalcular posição quando showList mudar no web (apenas uma vez quando mostrar)
+  // Recalcular posição quando showList ou searchText mudar no web
   useEffect(() => {
-    if (Platform.OS === 'web' && showList && filtered.length > 0 && !positionCalculatedRef.current) {
-      // Recalcular posição apenas uma vez quando mostrar a lista
+    if (Platform.OS === 'web' && showList && filtered.length > 0) {
+      // Recalcular posição quando mostrar a lista ou quando o texto mudar
       const timer = setTimeout(() => {
         updateDropdownPosition();
-        positionCalculatedRef.current = true;
-      }, 100);
+      }, 50);
       return () => clearTimeout(timer);
-    } else if (!showList) {
-      // Reset quando esconder a lista
-      positionCalculatedRef.current = false;
     }
-  }, [showList]);
+  }, [showList, searchText, filtered.length]);
 
   // Quando o usuário digita
   const handleChange = (text: string) => {
@@ -140,14 +136,9 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
     // Mostrar lista mesmo com 1 caractere se houver resultados
     if (text.trim().length >= 1) {
       setShowList(true);
-      // Reset flag de posição calculada para recalcular quando necessário
-      if (Platform.OS === 'web') {
-        positionCalculatedRef.current = false;
-      }
       console.log('🔍 AutocompleteField - Texto digitado:', text, 'Mostrando lista');
     } else {
       setShowList(false);
-      positionCalculatedRef.current = false;
     }
   };
 
@@ -435,9 +426,7 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
             >
               {Platform.OS === 'web' ? (
                 // WEB: Dropdown posicionado abaixo do input
-                <TouchableOpacity
-                  activeOpacity={1}
-                  onPress={(e) => e.stopPropagation()}
+                <View
                   style={[
                     styles.webDropdownContainer,
                     dropdownPosition.width > 0 ? {
@@ -445,11 +434,14 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
                       left: dropdownPosition.left,
                       width: dropdownPosition.width,
                     } : {
-                      // Fallback: usar position relative se não conseguir calcular
-                      position: 'relative' as any,
-                      marginTop: 4,
+                      // Fallback: posicionar relativo ao container
+                      top: 0,
+                      left: 0,
+                      width: '100%',
                     },
                   ]}
+                  onStartShouldSetResponder={() => true}
+                  onMoveShouldSetResponder={() => true}
                 >
                   <View style={styles.webDropdown}>
                     <ScrollView
@@ -489,7 +481,7 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
                       ))}
                     </ScrollView>
                   </View>
-                </TouchableOpacity>
+                </View>
               ) : (
                 // MOBILE: Modal fullscreen
                 <SafeAreaView style={styles.modalContainer}>
