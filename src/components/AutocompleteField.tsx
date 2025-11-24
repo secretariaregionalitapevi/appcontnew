@@ -68,6 +68,7 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
   const inputRef = useRef<TextInput>(null);
   const blurTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const flatListRef = useRef<FlatList>(null);
+  const positionCalculatedRef = useRef(false);
 
   // Normalizar texto (remove acentos, converte para minúscula)
   const normalize = (text: string) => {
@@ -112,16 +113,21 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
     }
   }, [value, options]);
 
-  // Recalcular posição quando showList mudar no web
+  // Recalcular posição quando showList mudar no web (apenas uma vez quando mostrar)
+  const positionCalculatedRef = useRef(false);
   useEffect(() => {
-    if (Platform.OS === 'web' && showList && filtered.length > 0) {
-      // Recalcular posição após um pequeno delay para garantir que o DOM esteja atualizado
+    if (Platform.OS === 'web' && showList && filtered.length > 0 && !positionCalculatedRef.current) {
+      // Recalcular posição apenas uma vez quando mostrar a lista
       const timer = setTimeout(() => {
         updateDropdownPosition();
-      }, 50);
+        positionCalculatedRef.current = true;
+      }, 100);
       return () => clearTimeout(timer);
+    } else if (!showList) {
+      // Reset quando esconder a lista
+      positionCalculatedRef.current = false;
     }
-  }, [showList, filtered.length]);
+  }, [showList]);
 
   // Quando o usuário digita
   const handleChange = (text: string) => {
@@ -135,15 +141,14 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
     // Mostrar lista mesmo com 1 caractere se houver resultados
     if (text.trim().length >= 1) {
       setShowList(true);
-      // Atualizar posição no web
+      // Reset flag de posição calculada para recalcular quando necessário
       if (Platform.OS === 'web') {
-        setTimeout(() => {
-          updateDropdownPosition();
-        }, 100);
+        positionCalculatedRef.current = false;
       }
       console.log('🔍 AutocompleteField - Texto digitado:', text, 'Mostrando lista');
     } else {
       setShowList(false);
+      positionCalculatedRef.current = false;
     }
   };
 
@@ -180,7 +185,6 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
               left: rect.left + window.scrollX,
               width: rect.width || 300,
             };
-            console.log('📍 Posição calculada:', newPosition);
             setDropdownPosition(newPosition);
             return;
           }
@@ -194,7 +198,6 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
               left: x,
               width: width || 300,
             };
-            console.log('📍 Posição calculada (measureInWindow):', newPosition);
             setDropdownPosition(newPosition);
           });
           return;
@@ -219,12 +222,6 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
   // Quando o campo recebe foco
   const handleFocus = () => {
     setIsFocused(true);
-    // Calcular posição no web
-    if (Platform.OS === 'web') {
-      setTimeout(() => {
-        updateDropdownPosition();
-      }, 100);
-    }
     // Cancelar blur pendente
     if (blurTimeoutRef.current) {
       clearTimeout(blurTimeoutRef.current);
@@ -233,12 +230,6 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
     // Mostrar lista se houver texto digitado
     if (searchText.trim().length >= 1) {
       setShowList(true);
-      // Recalcular posição quando mostrar lista
-      if (Platform.OS === 'web') {
-        setTimeout(() => {
-          updateDropdownPosition();
-        }, 150);
-      }
     }
   };
 
@@ -420,17 +411,7 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
         />
 
         {/* Dropdown - Usar Modal em TODAS as plataformas para garantir funcionamento */}
-        {showList && filtered.length > 0 && (() => {
-          if (Platform.OS === 'web') {
-            console.log('🔍 Renderizando Modal Web:', {
-              showList,
-              filteredLength: filtered.length,
-              dropdownPosition,
-              hasPosition: dropdownPosition.width > 0,
-            });
-          }
-          return true;
-        })() && (
+        {showList && filtered.length > 0 && (
           <Modal
             visible={true}
             transparent={true}
