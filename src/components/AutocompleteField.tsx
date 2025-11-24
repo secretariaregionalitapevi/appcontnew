@@ -420,7 +420,17 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
         />
 
         {/* Dropdown - Usar Modal em TODAS as plataformas para garantir funcionamento */}
-        {showList && filtered.length > 0 && (
+        {showList && filtered.length > 0 && (() => {
+          if (Platform.OS === 'web') {
+            console.log('🔍 Renderizando Modal Web:', {
+              showList,
+              filteredLength: filtered.length,
+              dropdownPosition,
+              hasPosition: dropdownPosition.width > 0,
+            });
+          }
+          return true;
+        })() && (
           <Modal
             visible={true}
             transparent={true}
@@ -728,7 +738,7 @@ const styles = StyleSheet.create({
   // Estilos para Modal em todas as plataformas
   modalOverlay: {
     flex: 1,
-    backgroundColor: Platform.OS === 'web' ? 'rgba(0, 0, 0, 0.01)' : 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: Platform.OS === 'web' ? 'transparent' : 'rgba(0, 0, 0, 0.5)',
     justifyContent: Platform.OS === 'web' ? 'flex-start' : 'flex-end',
     zIndex: 99999,
     elevation: 99999,
@@ -738,6 +748,7 @@ const styles = StyleSheet.create({
       left: 0,
       right: 0,
       bottom: 0,
+      pointerEvents: 'auto' as any,
     } : {}),
   },
   webDropdownContainer: {
@@ -746,6 +757,8 @@ const styles = StyleSheet.create({
     ...(Platform.OS === 'web' ? {
       position: 'fixed' as any,
       pointerEvents: 'auto' as any,
+      // @ts-ignore
+      display: 'block',
     } : {}),
   },
   webDropdown: {
@@ -763,6 +776,11 @@ const styles = StyleSheet.create({
     ...(Platform.OS === 'web' ? {
       boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)',
       backgroundColor: '#ffffff',
+      // @ts-ignore
+      display: 'block',
+      // @ts-ignore
+      visibility: 'visible',
+      opacity: 1,
     } : {}),
   },
   webDropdownList: {
