@@ -112,6 +112,17 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
     }
   }, [value, options]);
 
+  // Recalcular posição quando showList mudar no web
+  useEffect(() => {
+    if (Platform.OS === 'web' && showList && filtered.length > 0) {
+      // Recalcular posição após um pequeno delay para garantir que o DOM esteja atualizado
+      const timer = setTimeout(() => {
+        updateDropdownPosition();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [showList, filtered.length]);
+
   // Quando o usuário digita
   const handleChange = (text: string) => {
     setSearchText(text);
@@ -128,7 +139,7 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
       if (Platform.OS === 'web') {
         setTimeout(() => {
           updateDropdownPosition();
-        }, 50);
+        }, 100);
       }
       console.log('🔍 AutocompleteField - Texto digitado:', text, 'Mostrando lista');
     } else {
@@ -143,48 +154,63 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
         // @ts-ignore
         const inputElement = inputRef.current as any;
         if (inputElement && typeof document !== 'undefined') {
-          // Tentar usar getBoundingClientRect do input
-          if (inputElement.getBoundingClientRect) {
-            const rect = inputElement.getBoundingClientRect();
-            setDropdownPosition({
+          // Tentar acessar o elemento DOM nativo do React Native Web
+          let domElement = null;
+          
+          // Tentar diferentes formas de acessar o elemento DOM
+          if (inputElement._nativeNode) {
+            domElement = inputElement._nativeNode;
+          } else if (inputElement._internalFiberInstanceHandleDEV) {
+            domElement = inputElement._internalFiberInstanceHandleDEV.stateNode;
+          } else if (inputElement.getBoundingClientRect) {
+            domElement = inputElement;
+          } else if (typeof document !== 'undefined') {
+            // Tentar encontrar o input no DOM
+            const inputs = document.querySelectorAll('input');
+            if (inputs.length > 0) {
+              // Pegar o último input (provavelmente é o nosso)
+              domElement = inputs[inputs.length - 1];
+            }
+          }
+
+          if (domElement && domElement.getBoundingClientRect) {
+            const rect = domElement.getBoundingClientRect();
+            const newPosition = {
               top: rect.bottom + window.scrollY + 4,
               left: rect.left + window.scrollX,
-              width: rect.width,
-            });
+              width: rect.width || 300,
+            };
+            console.log('📍 Posição calculada:', newPosition);
+            setDropdownPosition(newPosition);
             return;
-          }
-          // Tentar acessar o elemento DOM nativo
-          if (inputElement._nativeNode) {
-            const nativeNode = inputElement._nativeNode;
-            if (nativeNode.getBoundingClientRect) {
-              const rect = nativeNode.getBoundingClientRect();
-              setDropdownPosition({
-                top: rect.bottom + window.scrollY + 4,
-                left: rect.left + window.scrollX,
-                width: rect.width,
-              });
-              return;
-            }
           }
         }
         // Fallback: usar measureInWindow do container
         if (containerRef.current) {
           // @ts-ignore
           containerRef.current.measureInWindow((x: number, y: number, width: number, height: number) => {
-            setDropdownPosition({
+            const newPosition = {
               top: y + height + 4,
               left: x,
-              width: width,
-            });
+              width: width || 300,
+            };
+            console.log('📍 Posição calculada (measureInWindow):', newPosition);
+            setDropdownPosition(newPosition);
           });
+          return;
         }
       } catch (error) {
         console.warn('Erro ao calcular posição:', error);
-        // Fallback: usar valores padrão
-        setDropdownPosition({
-          top: 0,
-          left: 0,
-          width: 0,
+      }
+      // Se chegou aqui, não conseguiu calcular - usar fallback baseado no container
+      if (containerRef.current) {
+        // @ts-ignore
+        containerRef.current.measureInWindow((x: number, y: number, width: number, height: number) => {
+          setDropdownPosition({
+            top: y + height + 4,
+            left: x,
+            width: width || 300,
+          });
         });
       }
     }
@@ -197,7 +223,7 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
     if (Platform.OS === 'web') {
       setTimeout(() => {
         updateDropdownPosition();
-      }, 50);
+      }, 100);
     }
     // Cancelar blur pendente
     if (blurTimeoutRef.current) {
@@ -207,6 +233,12 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
     // Mostrar lista se houver texto digitado
     if (searchText.trim().length >= 1) {
       setShowList(true);
+      // Recalcular posição quando mostrar lista
+      if (Platform.OS === 'web') {
+        setTimeout(() => {
+          updateDropdownPosition();
+        }, 150);
+      }
     }
   };
 
@@ -418,10 +450,14 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
                   onPress={(e) => e.stopPropagation()}
                   style={[
                     styles.webDropdownContainer,
-                    {
-                      top: dropdownPosition.top || 0,
-                      left: dropdownPosition.left || 0,
-                      width: dropdownPosition.width || '100%',
+                    dropdownPosition.width > 0 ? {
+                      top: dropdownPosition.top,
+                      left: dropdownPosition.left,
+                      width: dropdownPosition.width,
+                    } : {
+                      // Fallback: usar position relative se não conseguir calcular
+                      position: 'relative' as any,
+                      marginTop: 4,
                     },
                   ]}
                 >
@@ -709,6 +745,7 @@ const styles = StyleSheet.create({
     zIndex: 100000,
     ...(Platform.OS === 'web' ? {
       position: 'fixed' as any,
+      pointerEvents: 'auto' as any,
     } : {}),
   },
   webDropdown: {
