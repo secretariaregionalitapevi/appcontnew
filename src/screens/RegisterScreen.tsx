@@ -928,19 +928,21 @@ export const RegisterScreen: React.FC = () => {
       <AppHeader onEditRegistrosPress={handleEditRegistros} />
       <KeyboardAvoidingView
         style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        enabled={Platform.OS === 'ios'}
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           collapsable={false}
-          nestedScrollEnabled={Platform.OS !== 'web'}
+          nestedScrollEnabled={true}
           scrollEnabled={true}
           bounces={Platform.OS === 'ios'}
           showsVerticalScrollIndicator={true}
           alwaysBounceVertical={false}
           scrollEventThrottle={16}
-          removeClippedSubviews={Platform.OS === 'android'}
+          removeClippedSubviews={false}
           style={Platform.OS === 'web' 
             ? { 
                 position: 'relative' as const, 
@@ -1255,13 +1257,20 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
+    ...(Platform.OS !== 'web' ? {
+      height: '100%',
+    } : {}),
   },
   keyboardView: {
     flex: 1,
+    ...(Platform.OS !== 'web' ? {
+      height: '100%',
+    } : {}),
   },
   scrollContent: {
     flexGrow: 1,
     padding: theme.spacing.lg,
+    paddingBottom: theme.spacing.xl * 2,
     ...(Platform.OS === 'web'
       ? {
           overflow: 'visible' as const,
