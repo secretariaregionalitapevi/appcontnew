@@ -1442,19 +1442,51 @@ export const supabaseDataService = {
     }
 
     // Buscar nomes a partir dos IDs
-    const [comuns, cargos, instrumentos] = await Promise.all([
+    let [comuns, cargos, instrumentos] = await Promise.all([
       this.getComunsFromLocal(),
       this.getCargosFromLocal(),
       this.getInstrumentosFromLocal(),
     ]);
 
-    const comum = comuns.find(c => c.id === registro.comum_id);
-    const cargoSelecionado = cargos.find(c => c.id === registro.cargo_id);
+    // Se as listas estiverem vazias, tentar recarregar
+    if (comuns.length === 0 || cargos.length === 0) {
+      console.warn('⚠️ Listas vazias detectadas, recarregando dados...');
+      await this.syncData();
+      [comuns, cargos, instrumentos] = await Promise.all([
+        this.getComunsFromLocal(),
+        this.getCargosFromLocal(),
+        this.getInstrumentosFromLocal(),
+      ]);
+    }
+
+    // Verificar se é registro externo (do modal de novo registro)
+    const isExternalRegistro = registro.comum_id.startsWith('external_');
+    
+    let comum: any = null;
+    let cargoSelecionado = cargos.find(c => c.id === registro.cargo_id);
+    
+    if (isExternalRegistro) {
+      // Para registros externos, extrair nome da comum do ID
+      const comumNome = registro.comum_id.replace(/^external_/, '').replace(/_\d+$/, '');
+      comum = { id: registro.comum_id, nome: comumNome };
+    } else {
+      comum = comuns.find(c => c.id === registro.comum_id);
+    }
+    
     const instrumento = registro.instrumento_id
       ? instrumentos.find(i => i.id === registro.instrumento_id)
       : null;
 
     if (!comum || !cargoSelecionado) {
+      console.error('❌ Erro ao encontrar comum ou cargo:', {
+        comum_id: registro.comum_id,
+        cargo_id: registro.cargo_id,
+        isExternal: isExternalRegistro,
+        comuns_count: comuns.length,
+        cargos_count: cargos.length,
+        comuns_ids: comuns.map(c => c.id).slice(0, 5),
+        cargos_ids: cargos.map(c => c.id).slice(0, 5),
+      });
       throw new Error('Dados incompletos: comum ou cargo não encontrados');
     }
 

@@ -180,9 +180,10 @@ export const SimpleSelectField: React.FC<SimpleSelectFieldProps> = ({
   // Calcular altura máxima: cada item tem ~48px, máximo 600px para mostrar todos os instrumentos
   const maxHeight = Math.min(filtered.length * 48, 600);
 
-  // Z-index alto quando focado - usar z-index do container pai + 1 para dropdown
-  const containerZIndex = isFocused ? (Platform.OS === 'web' ? 1002 : 1000) : 1;
-  const dropdownZIndex = isFocused ? (Platform.OS === 'web' ? 1003 : 1001) : 1;
+  // Z-index MUITO ALTO para aparecer acima de TUDO em TODAS as plataformas (igual AutocompleteField)
+  // Quando dropdown está aberto (showList), usar z-index muito alto
+  const containerZIndex = (isFocused || showList) ? 99999 : 1;
+  const dropdownZIndex = 999999; // Z-index extremamente alto para garantir que apareça acima de tudo
 
   return (
     <View
@@ -209,16 +210,14 @@ export const SimpleSelectField: React.FC<SimpleSelectFieldProps> = ({
       <View
         style={[
           styles.inputContainer,
-          Platform.OS === 'web'
-            ? {
-                position: 'relative' as ViewStyle['position'],
-                overflow: 'visible' as any,
-                zIndex: containerZIndex,
-              }
-            : {
-                overflow: 'visible' as any,
-                zIndex: containerZIndex,
-              },
+          {
+            position: 'relative' as ViewStyle['position'],
+            overflow: 'visible' as ViewStyle['overflow'],
+            zIndex: containerZIndex,
+            ...(Platform.OS === 'web' ? {
+              backgroundColor: '#ffffff',
+            } : {}),
+          },
         ]}
       >
         <TextInput
@@ -229,6 +228,7 @@ export const SimpleSelectField: React.FC<SimpleSelectFieldProps> = ({
             Platform.OS === 'web'
               ? {
                   position: 'relative' as ViewStyle['position'],
+                  zIndex: 1,
                 }
               : {},
           ]}
@@ -288,89 +288,67 @@ export const SimpleSelectField: React.FC<SimpleSelectFieldProps> = ({
             : {})}
         />
 
-        {/* Dropdown - Modal no mobile, absolute inline na web */}
+        {/* Dropdown - View simples no web, Modal no mobile (igual AutocompleteField) */}
         {showList && filtered.length > 0 && (
           Platform.OS === 'web' ? (
             <View
-              style={[
-                styles.dropdown,
-                {
-                  zIndex: dropdownZIndex,
-                  maxHeight: maxHeight,
-                },
-              ]}
-              onStartShouldSetResponder={() => false}
-              onMoveShouldSetResponder={() => false}
-              pointerEvents="box-none"
-              {...(Platform.OS === 'web'
-                ? {
-                    onMouseEnter: () => {
-                      // Cancelar blur quando mouse entra no dropdown
-                      if (blurTimeoutRef.current) {
-                        clearTimeout(blurTimeoutRef.current);
-                        blurTimeoutRef.current = null;
-                      }
-                    },
-                    onMouseDown: (e: React.MouseEvent) => {
-                      // Cancelar blur ao clicar no dropdown
-                      if (blurTimeoutRef.current) {
-                        clearTimeout(blurTimeoutRef.current);
-                        blurTimeoutRef.current = null;
-                      }
-                    },
-                  }
-                : {})}
+              style={styles.webDropdownContainer}
             >
-              <FlatList
-                ref={flatListRef}
-                data={filtered}
-                keyExtractor={item => item.id}
-                renderItem={({ item, index }) => (
-                  <TouchableOpacity
-                    style={[
-                      styles.item,
-                      selectedIndex === index && styles.itemHighlighted,
-                      value === item.id && styles.itemSelected,
-                    ]}
-                    onPress={() => {
-                      // Cancelar blur pendente ao clicar
-                      if (blurTimeoutRef.current) {
-                        clearTimeout(blurTimeoutRef.current);
-                        blurTimeoutRef.current = null;
-                      }
-                      handleSelect(item);
-                    }}
-                    activeOpacity={0.7}
-                    {...(Platform.OS === 'web'
-                      ? {
-                          onMouseEnter: () => setSelectedIndex(index),
-                          onMouseLeave: () => setSelectedIndex(-1),
+              <View style={styles.webDropdown}>
+                <FlatList
+                  ref={flatListRef}
+                  data={filtered}
+                  keyExtractor={item => item.id}
+                  renderItem={({ item, index }) => (
+                    <TouchableOpacity
+                      style={[
+                        styles.item,
+                        selectedIndex === index && styles.itemHighlighted,
+                        value === item.id && styles.itemSelected,
+                      ]}
+                      onPress={() => {
+                        if (blurTimeoutRef.current) {
+                          clearTimeout(blurTimeoutRef.current);
+                          blurTimeoutRef.current = null;
                         }
-                      : {})}
-                  >
-                    <Text
-                      style={[styles.itemText, value === item.id && styles.itemTextSelected]}
-                      numberOfLines={1}
+                        handleSelect(item);
+                        setShowList(false);
+                        if (inputRef.current) {
+                          inputRef.current.blur();
+                        }
+                      }}
+                      activeOpacity={0.7}
+                      {...(Platform.OS === 'web'
+                        ? {
+                            onMouseEnter: () => setSelectedIndex(index),
+                            onMouseLeave: () => setSelectedIndex(-1),
+                          }
+                        : {})}
                     >
-                      {item.label}
-                    </Text>
-                    {value === item.id && (
-                      <FontAwesome5
-                        name="check"
-                        size={12}
-                        color={theme.colors.primary}
-                        style={styles.checkIcon}
-                      />
-                    )}
-                  </TouchableOpacity>
-                )}
-                style={[styles.list, { maxHeight: maxHeight }]} // Aplicar altura máxima dinâmica
-                nestedScrollEnabled
-                keyboardShouldPersistTaps="handled"
-                initialNumToRender={15}
-                maxToRenderPerBatch={15}
-                windowSize={10}
-              />
+                      <Text
+                        style={[styles.itemText, value === item.id && styles.itemTextSelected]}
+                        numberOfLines={1}
+                      >
+                        {item.label}
+                      </Text>
+                      {value === item.id && (
+                        <FontAwesome5
+                          name="check"
+                          size={12}
+                          color={theme.colors.primary}
+                          style={styles.checkIcon}
+                        />
+                      )}
+                    </TouchableOpacity>
+                  )}
+                  style={[styles.webDropdownList, { maxHeight: maxHeight }]}
+                  nestedScrollEnabled
+                  keyboardShouldPersistTaps="handled"
+                  initialNumToRender={15}
+                  maxToRenderPerBatch={15}
+                  windowSize={10}
+                />
+              </View>
             </View>
           ) : (
             <Modal
@@ -489,6 +467,14 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     position: 'relative' as any,
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore
+      position: 'relative',
+      // @ts-ignore
+      zIndex: 1,
+      // @ts-ignore
+      isolation: 'isolate',
+    } : {}),
   },
   input: {
     borderWidth: 1.5,
@@ -509,6 +495,68 @@ const styles = StyleSheet.create({
   inputError: {
     borderColor: theme.colors.error,
   },
+  webDropdownContainer: {
+    position: 'absolute' as any,
+    top: '100%',
+    left: 0,
+    right: 0,
+    zIndex: 99999,
+    marginTop: 4,
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore
+      display: 'block',
+      // @ts-ignore
+      visibility: 'visible',
+      opacity: 1,
+      // @ts-ignore
+      zIndex: 99999,
+      // @ts-ignore
+      pointerEvents: 'auto',
+      // @ts-ignore
+      isolation: 'isolate',
+    } : {}),
+  },
+  webDropdown: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1.5,
+    borderColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.md,
+    maxHeight: 600,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 99999,
+    overflow: 'hidden',
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)',
+      backgroundColor: '#ffffff',
+      // @ts-ignore
+      display: 'block',
+      // @ts-ignore
+      visibility: 'visible',
+      opacity: 1,
+      // @ts-ignore
+      background: '#ffffff',
+      // @ts-ignore
+      backgroundImage: 'none',
+      // @ts-ignore
+      isolation: 'isolate',
+      // @ts-ignore
+      zIndex: 99999,
+      // @ts-ignore
+      position: 'relative',
+    } : {}),
+  },
+  webDropdownList: {
+    maxHeight: 600,
+    backgroundColor: '#ffffff',
+    ...(Platform.OS === 'web' ? {
+      backgroundColor: '#ffffff',
+      // @ts-ignore
+      background: '#ffffff',
+    } : {}),
+  },
   dropdown: {
     position: 'absolute' as any,
     top: '100%',
@@ -524,23 +572,39 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 12,
-    elevation: Platform.OS === 'android' ? 1000 : 15,
+    elevation: 99999,
     overflow: 'hidden',
-    zIndex: Platform.OS === 'web' ? 1001 : 1001,
+    zIndex: 99999,
   },
   list: {
-    maxHeight: 600, // Aumentado para mostrar todos os instrumentos
+    maxHeight: 600,
+    backgroundColor: '#ffffff',
+    ...(Platform.OS === 'web' ? {
+      backgroundColor: '#ffffff',
+      // @ts-ignore
+      background: '#ffffff',
+    } : {}),
   },
   item: {
     paddingVertical: theme.spacing.md,
     paddingHorizontal: theme.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: theme.colors.border,
     minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: '#ffffff',
+    ...(Platform.OS === 'web' ? {
+      backgroundColor: '#ffffff',
+      // @ts-ignore
+      background: '#ffffff',
+      opacity: 1,
+      // @ts-ignore
+      position: 'relative',
+      // @ts-ignore
+      zIndex: 99999,
+    } : {}),
   },
   itemHighlighted: {
     backgroundColor: theme.colors.primary + '15',
@@ -590,7 +654,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalDropdown: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: '#ffffff',
     borderTopLeftRadius: theme.borderRadius.lg,
     borderTopRightRadius: theme.borderRadius.lg,
     maxHeight: '80%',
@@ -599,6 +663,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 20,
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore
+      backgroundColor: '#ffffff',
+      // @ts-ignore
+      background: '#ffffff',
+      // @ts-ignore
+      opacity: 1,
+    } : {}),
   },
   modalHeader: {
     flexDirection: 'row',
@@ -618,7 +690,11 @@ const styles = StyleSheet.create({
     padding: theme.spacing.xs,
   },
   modalList: {
-    maxHeight: 600, // Aumentado para mostrar todos os instrumentos no mobile também
+    maxHeight: 600,
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore
+      maxHeight: '80vh',
+    } : {}), // Aumentado para mostrar todos os instrumentos no mobile também
   },
   modalItem: {
     flexDirection: 'row',

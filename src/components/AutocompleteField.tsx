@@ -113,16 +113,7 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
     }
   }, [value, options]);
 
-  // Recalcular posição quando showList ou searchText mudar no web
-  useEffect(() => {
-    if (Platform.OS === 'web' && showList && filtered.length > 0) {
-      // Recalcular posição quando mostrar a lista ou quando o texto mudar
-      const timer = setTimeout(() => {
-        updateDropdownPosition();
-      }, 50);
-      return () => clearTimeout(timer);
-    }
-  }, [showList, searchText, filtered.length]);
+  // Não precisa mais calcular posição - usando position absolute relativo ao container
 
   // Quando o usuário digita
   const handleChange = (text: string) => {
@@ -159,7 +150,16 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
             domElement = inputElement._internalFiberInstanceHandleDEV.stateNode;
           } else if (inputElement.getBoundingClientRect) {
             domElement = inputElement;
-          } else if (typeof document !== 'undefined') {
+          } else if (containerRef.current) {
+            // Tentar usar o containerRef
+            // @ts-ignore
+            const containerElement = containerRef.current as any;
+            if (containerElement && containerElement._nativeNode) {
+              domElement = containerElement._nativeNode.querySelector('input');
+            }
+          }
+          
+          if (typeof document !== 'undefined' && !domElement) {
             // Tentar encontrar o input no DOM
             const inputs = document.querySelectorAll('input');
             if (inputs.length > 0) {
@@ -171,8 +171,8 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
           if (domElement && domElement.getBoundingClientRect) {
             const rect = domElement.getBoundingClientRect();
             const newPosition = {
-              top: rect.bottom + window.scrollY + 4,
-              left: rect.left + window.scrollX,
+              top: rect.bottom + 4, // Sem scrollY para position fixed
+              left: rect.left, // Sem scrollX para position fixed
               width: rect.width || 300,
             };
             console.log('📍 Posição calculada (getBoundingClientRect):', newPosition);
@@ -398,24 +398,11 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
             : {})}
         />
 
-        {/* Dropdown - Modal no mobile, inline no web */}
+        {/* Dropdown - View simples no web, Modal no mobile */}
         {showList && filtered.length > 0 && (
           Platform.OS === 'web' ? (
-            // WEB: Renderizar diretamente sem Modal
             <View
-              style={[
-                styles.webDropdownContainer,
-                dropdownPosition.width > 0 ? {
-                  top: dropdownPosition.top,
-                  left: dropdownPosition.left,
-                  width: dropdownPosition.width,
-                } : {
-                  // Fallback: valores padrão
-                  top: 200,
-                  left: 50,
-                  width: 400,
-                },
-              ]}
+              style={styles.webDropdownContainer}
             >
               <View style={styles.webDropdown}>
                 <ScrollView
@@ -443,6 +430,9 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
                         }
                       }}
                       activeOpacity={0.7}
+                      {...(Platform.OS === 'web' ? {
+                        onMouseEnter: () => setSelectedIndex(index),
+                      } : {})}
                     >
                       <FontAwesome5
                         name={icon}
@@ -578,6 +568,8 @@ const styles = StyleSheet.create({
       position: 'relative' as any,
       overflow: 'visible' as any,
       zIndex: 1,
+      // @ts-ignore
+      isolation: 'isolate',
     } : {}),
   },
   input: {
@@ -671,6 +663,10 @@ const styles = StyleSheet.create({
       // @ts-ignore
       background: '#ffffff',
       opacity: 1,
+      // @ts-ignore
+      position: 'relative',
+      // @ts-ignore
+      zIndex: 99999,
     } : {}),
   },
   itemSelected: {
@@ -720,19 +716,25 @@ const styles = StyleSheet.create({
     } : {}),
   },
   webDropdownContainer: {
+    position: 'absolute' as any,
+    top: '100%',
+    left: 0,
+    right: 0,
+    zIndex: 99999,
+    marginTop: 4,
     ...(Platform.OS === 'web' ? {
-      position: 'fixed' as any,
-      zIndex: 100000,
-      pointerEvents: 'auto' as any,
       // @ts-ignore
       display: 'block',
       // @ts-ignore
       visibility: 'visible',
       opacity: 1,
-    } : {
-      position: 'absolute' as any,
-      zIndex: 100000,
-    }),
+      // @ts-ignore
+      zIndex: 99999,
+      // @ts-ignore
+      pointerEvents: 'auto',
+      // @ts-ignore
+      isolation: 'isolate',
+    } : {}),
   },
   webDropdown: {
     backgroundColor: '#ffffff',
@@ -744,7 +746,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 12,
-    elevation: 999999,
+    elevation: 99999,
     overflow: 'hidden',
     ...(Platform.OS === 'web' ? {
       boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)',
@@ -754,11 +756,26 @@ const styles = StyleSheet.create({
       // @ts-ignore
       visibility: 'visible',
       opacity: 1,
+      // @ts-ignore
+      background: '#ffffff',
+      // @ts-ignore
+      backgroundImage: 'none',
+      // @ts-ignore
+      isolation: 'isolate',
+      // @ts-ignore
+      zIndex: 99999,
+      // @ts-ignore
+      position: 'relative',
     } : {}),
   },
   webDropdownList: {
     maxHeight: 300,
     backgroundColor: '#ffffff',
+    ...(Platform.OS === 'web' ? {
+      backgroundColor: '#ffffff',
+      // @ts-ignore
+      background: '#ffffff',
+    } : {}),
   },
   modalContainer: {
     flex: 1,

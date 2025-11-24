@@ -22,19 +22,51 @@ export const googleSheetsService = {
   ): Promise<{ success: boolean; error?: string }> {
     try {
       // Buscar nomes a partir dos IDs
-      const [comuns, cargos, instrumentos] = await Promise.all([
+      let [comuns, cargos, instrumentos] = await Promise.all([
         supabaseDataService.getComunsFromLocal(),
         supabaseDataService.getCargosFromLocal(),
         supabaseDataService.getInstrumentosFromLocal(),
       ]);
 
-      const comum = comuns.find(c => c.id === registro.comum_id);
-      const cargoSelecionado = cargos.find(c => c.id === registro.cargo_id);
+      // Se as listas estiverem vazias, tentar recarregar
+      if (comuns.length === 0 || cargos.length === 0) {
+        console.warn('⚠️ Listas vazias detectadas, recarregando dados...');
+        await supabaseDataService.syncData();
+        [comuns, cargos, instrumentos] = await Promise.all([
+          supabaseDataService.getComunsFromLocal(),
+          supabaseDataService.getCargosFromLocal(),
+          supabaseDataService.getInstrumentosFromLocal(),
+        ]);
+      }
+
+      // Verificar se é registro externo (do modal de novo registro)
+      const isExternalRegistro = registro.comum_id.startsWith('external_');
+      
+      let comum: any = null;
+      let cargoSelecionado = cargos.find(c => c.id === registro.cargo_id);
+      
+      if (isExternalRegistro) {
+        // Para registros externos, extrair nome da comum do ID
+        const comumNome = registro.comum_id.replace(/^external_/, '').replace(/_\d+$/, '');
+        comum = { id: registro.comum_id, nome: comumNome };
+      } else {
+        comum = comuns.find(c => c.id === registro.comum_id);
+      }
+      
       const instrumentoOriginal = registro.instrumento_id
         ? instrumentos.find(i => i.id === registro.instrumento_id)
         : null;
 
       if (!comum || !cargoSelecionado) {
+        console.error('❌ Erro ao encontrar comum ou cargo:', {
+          comum_id: registro.comum_id,
+          cargo_id: registro.cargo_id,
+          isExternal: isExternalRegistro,
+          comuns_count: comuns.length,
+          cargos_count: cargos.length,
+          comuns_ids: comuns.map(c => c.id).slice(0, 5),
+          cargos_ids: cargos.map(c => c.id).slice(0, 5),
+        });
         throw new Error('Dados incompletos: comum ou cargo não encontrados');
       }
 
@@ -68,13 +100,17 @@ export const googleSheetsService = {
       }
 
       // Buscar nivel da pessoa (OFICIALIZADO, CULTO OFICIAL ou CANDIDATO)
+      // 🚨 CORREÇÃO: Para registros externos (do modal), não calcular nível
       // 🚨 CORREÇÃO: Normalizar nivel baseado em regras (instrumento e cargo)
-      const nivelPessoaOriginal = pessoa?.nivel || null;
-      const nivelPessoa = normalizarNivel(
-        nivelPessoaOriginal,
-        instrumentoParaUsar?.nome,
-        cargoReal
-      );
+      let nivelPessoa = '';
+      if (!isExternalRegistro) {
+        const nivelPessoaOriginal = pessoa?.nivel || null;
+        nivelPessoa = normalizarNivel(
+          nivelPessoaOriginal,
+          instrumentoParaUsar?.nome,
+          cargoReal
+        ) || '';
+      }
 
       const cargo = { ...cargoSelecionado, nome: cargoReal };
 
@@ -99,8 +135,17 @@ export const googleSheetsService = {
       // Usar instrumento normalizado se for cargo feminino
       const instrumento = normalizacao.isNormalizado ? { nome: 'ÓRGÃO' } : instrumentoParaUsar;
 
-      // Buscar cidade da pessoa (se disponível) - só se não for nome manual
-      const cidade = isNomeManual ? '' : pessoa?.cidade || '';
+      // Buscar cidade da pessoa (se disponível)
+      // Para registros externos, a cidade vem no registro
+      let cidade = '';
+      if (isExternalRegistro) {
+        // Para registros externos, buscar cidade do registro (se disponível)
+        cidade = (registro as any).cidade || '';
+      } else if (isNomeManual) {
+        cidade = '';
+      } else {
+        cidade = pessoa?.cidade || '';
+      }
 
       // Buscar nome do local de ensaio (se for ID, converter para nome)
       let localEnsaioNome = registro.local_ensaio || '';

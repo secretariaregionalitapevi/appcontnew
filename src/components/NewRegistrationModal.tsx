@@ -49,6 +49,9 @@ export const NewRegistrationModal: React.FC<NewRegistrationModalProps> = ({
   // Debug: Log quando visible muda
   useEffect(() => {
     console.log('🔍 NewRegistrationModal visible:', visible);
+    if (Platform.OS === 'web' && visible) {
+      console.log('🌐 Modal deve estar visível no web');
+    }
   }, [visible]);
 
   // Resetar campos quando modal fecha
@@ -164,23 +167,34 @@ export const NewRegistrationModal: React.FC<NewRegistrationModalProps> = ({
     }
   };
 
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-      statusBarTranslucent
+  // Debug: Log quando visible muda
+  useEffect(() => {
+    console.log('🔍 NewRegistrationModal visible:', visible);
+    if (Platform.OS === 'web' && visible) {
+      console.log('🌐 Modal deve estar visível no web');
+    }
+  }, [visible]);
+
+  // No web, renderizar diretamente sem Modal se necessário
+  if (Platform.OS === 'web' && !visible) {
+    return null;
+  }
+
+  // Debug: Log quando vai renderizar
+  if (Platform.OS === 'web' && visible) {
+    console.log('🌐 Renderizando modal no web diretamente (sem Modal component)');
+  }
+
+  const modalContent = (
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      <TouchableOpacity
+        style={styles.overlay}
+        activeOpacity={1}
+        onPress={onClose}
       >
-        <TouchableOpacity
-          style={styles.overlay}
-          activeOpacity={1}
-          onPress={onClose}
-        >
           <TouchableOpacity
             style={styles.modalContent}
             activeOpacity={1}
@@ -249,20 +263,28 @@ export const NewRegistrationModal: React.FC<NewRegistrationModalProps> = ({
                 <Text style={styles.label}>
                   Cargo/Ministério <Text style={styles.required}>*</Text>
                 </Text>
-                <SimpleSelectField
-                  value={selectedCargo}
-                  options={cargosOptions}
-                  onSelect={(option) => {
-                    setSelectedCargo(String(option.value));
-                    setSelectedInstrumento('');
-                    setSelectedClasse('');
-                    if (errors.cargo) {
-                      setErrors({ ...errors, cargo: '' });
-                    }
-                  }}
-                  placeholder="Selecione um cargo..."
-                  error={errors.cargo}
-                />
+                <View style={Platform.OS === 'web' ? { 
+                  position: 'relative' as const, 
+                  zIndex: 9999999, 
+                  overflow: 'visible' as const,
+                  // @ts-ignore
+                  isolation: 'isolate',
+                } : {}}>
+                  <SimpleSelectField
+                    value={selectedCargo}
+                    options={cargosOptions}
+                    onSelect={(option) => {
+                      setSelectedCargo(String(option.value));
+                      setSelectedInstrumento('');
+                      setSelectedClasse('');
+                      if (errors.cargo) {
+                        setErrors({ ...errors, cargo: '' });
+                      }
+                    }}
+                    placeholder="Selecione um cargo..."
+                    error={errors.cargo}
+                  />
+                </View>
               </View>
 
               {/* Instrumento (se Músico) */}
@@ -308,23 +330,34 @@ export const NewRegistrationModal: React.FC<NewRegistrationModalProps> = ({
               )}
 
               {/* Nome */}
-              <View style={styles.field}>
-                <Text style={styles.label}>
-                  Nome completo <Text style={styles.required}>*</Text>
-                </Text>
-                <TextInput
-                  style={[styles.input, errors.nome && styles.inputError]}
-                  value={nome}
-                  onChangeText={(text) => {
-                    setNome(text);
-                    if (errors.nome) {
-                      setErrors({ ...errors, nome: '' });
-                    }
-                  }}
-                  placeholder="Ex.: João da Silva"
-                  placeholderTextColor={theme.colors.textSecondary}
-                />
-                {errors.nome && <Text style={styles.errorText}>{errors.nome}</Text>}
+              <View style={Platform.OS === 'web' ? { 
+                position: 'relative' as const, 
+                zIndex: 0, 
+                overflow: 'visible' as const,
+                // @ts-ignore
+                isolation: 'isolate',
+              } : {}}>
+                <View style={styles.field}>
+                  <Text style={styles.label}>
+                    Nome completo <Text style={styles.required}>*</Text>
+                  </Text>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      errors.nome && styles.inputError,
+                    ]}
+                    value={nome}
+                    onChangeText={(text) => {
+                      setNome(text);
+                      if (errors.nome) {
+                        setErrors({ ...errors, nome: '' });
+                      }
+                    }}
+                    placeholder="Ex.: João da Silva"
+                    placeholderTextColor={theme.colors.textSecondary}
+                  />
+                  {errors.nome && <Text style={styles.errorText}>{errors.nome}</Text>}
+                </View>
               </View>
             </ScrollView>
 
@@ -350,6 +383,39 @@ export const NewRegistrationModal: React.FC<NewRegistrationModalProps> = ({
           </TouchableOpacity>
         </TouchableOpacity>
       </KeyboardAvoidingView>
+  );
+
+  if (Platform.OS === 'web') {
+    // No web, renderizar diretamente usando View fixo para evitar problemas com Modal
+    return visible ? (
+      <View
+        style={{
+          position: 'fixed' as any,
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 999999,
+          // @ts-ignore
+          pointerEvents: 'auto',
+          // @ts-ignore
+          isolation: 'isolate',
+        }}
+      >
+        {modalContent}
+      </View>
+    ) : null;
+  }
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+      statusBarTranslucent
+    >
+      {modalContent}
     </Modal>
   );
 };
@@ -357,6 +423,23 @@ export const NewRegistrationModal: React.FC<NewRegistrationModalProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    zIndex: 999999,
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore
+      zIndex: 999999,
+      // @ts-ignore
+      position: 'fixed',
+      // @ts-ignore
+      top: 0,
+      // @ts-ignore
+      left: 0,
+      // @ts-ignore
+      right: 0,
+      // @ts-ignore
+      bottom: 0,
+      // @ts-ignore
+      isolation: 'isolate',
+    } : {}),
   },
   overlay: {
     flex: 1,
@@ -364,29 +447,67 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: theme.spacing.lg,
+    zIndex: 999999,
     ...(Platform.OS === 'web'
       ? {
           backdropFilter: 'blur(4px)',
+          // @ts-ignore
+          backgroundColor: 'rgba(0, 0, 0, 0.6)',
+          // @ts-ignore
+          background: 'rgba(0, 0, 0, 0.6)',
+          // @ts-ignore
+          opacity: 1,
+          // @ts-ignore
+          zIndex: 999999,
+          // @ts-ignore
+          position: 'fixed',
+          // @ts-ignore
+          top: 0,
+          // @ts-ignore
+          left: 0,
+          // @ts-ignore
+          right: 0,
+          // @ts-ignore
+          bottom: 0,
+          // @ts-ignore
+          width: '100%',
+          // @ts-ignore
+          height: '100%',
+          // @ts-ignore
+          isolation: 'isolate',
         }
       : {}),
   },
   modalContent: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: '#ffffff',
     borderRadius: 16,
     width: '100%',
     maxWidth: 500,
     maxHeight: '90%',
     overflow: 'hidden',
+    zIndex: 999999,
     ...(Platform.OS === 'web'
       ? {
           boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+          // @ts-ignore
+          backgroundColor: '#ffffff',
+          // @ts-ignore
+          background: '#ffffff',
+          // @ts-ignore
+          opacity: 1,
+          // @ts-ignore
+          zIndex: 1000000,
+          // @ts-ignore
+          position: 'relative',
+          // @ts-ignore
+          isolation: 'isolate',
         }
       : {
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 8 },
           shadowOpacity: 0.25,
           shadowRadius: 24,
-          elevation: 20,
+          elevation: 999999,
         }),
   },
   header: {
@@ -394,6 +515,15 @@ const styles = StyleSheet.create({
     padding: theme.spacing.xl,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
+    backgroundColor: '#ffffff',
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore
+      backgroundColor: '#ffffff',
+      // @ts-ignore
+      background: '#ffffff',
+      // @ts-ignore
+      opacity: 1,
+    } : {}),
   },
   headerIcon: {
     marginBottom: theme.spacing.md,
@@ -411,12 +541,36 @@ const styles = StyleSheet.create({
   },
   body: {
     flex: 1,
+    backgroundColor: '#ffffff',
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore
+      backgroundColor: '#ffffff',
+      // @ts-ignore
+      background: '#ffffff',
+      // @ts-ignore
+      opacity: 1,
+    } : {}),
   },
   bodyContent: {
     padding: theme.spacing.lg,
+    backgroundColor: '#ffffff',
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore
+      backgroundColor: '#ffffff',
+      // @ts-ignore
+      background: '#ffffff',
+      // @ts-ignore
+      opacity: 1,
+    } : {}),
   },
   field: {
     marginBottom: theme.spacing.md,
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore
+      position: 'relative',
+      // @ts-ignore
+      zIndex: 1,
+    } : {}),
   },
   label: {
     fontSize: theme.fontSize.sm,
@@ -434,10 +588,16 @@ const styles = StyleSheet.create({
     padding: theme.spacing.md,
     fontSize: theme.fontSize.md,
     color: theme.colors.text,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: '#ffffff',
     ...(Platform.OS === 'web'
       ? {
           outlineStyle: 'none',
+          // @ts-ignore
+          backgroundColor: '#ffffff',
+          // @ts-ignore
+          background: '#ffffff',
+          // @ts-ignore
+          opacity: 1,
         }
       : {}),
   },
@@ -456,8 +616,16 @@ const styles = StyleSheet.create({
     padding: theme.spacing.md,
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
-    backgroundColor: '#fafafa',
+    backgroundColor: '#ffffff',
     gap: theme.spacing.sm,
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore
+      backgroundColor: '#ffffff',
+      // @ts-ignore
+      background: '#ffffff',
+      // @ts-ignore
+      opacity: 1,
+    } : {}),
   },
   cancelButton: {
     flexDirection: 'row',

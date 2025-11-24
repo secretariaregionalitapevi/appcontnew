@@ -280,9 +280,8 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
     };
   }, []);
 
-  // Z-index MUITO ALTO para aparecer acima de TUDO em TODAS as plataformas
+  // Z-index para aparecer acima de outros elementos
   const containerZIndex = isFocused ? 99999 : 1;
-  const dropdownZIndex = 999999; // Z-index extremamente alto para garantir que apareça acima de tudo
 
   return (
     <View
@@ -517,21 +516,19 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
               <>
             {showList && filtered.length > 0 && (
               <View
+                style={styles.webDropdownContainer}
+              >
+              <View
                 style={[
                   styles.dropdown,
-                  {
-                    zIndex: dropdownZIndex,
-                  },
                   Platform.OS === 'web' ? {
-                    position: 'absolute' as any,
-                    top: '100%',
-                    left: 0,
-                    right: 0,
-                    opacity: 1,
+                    // @ts-ignore
                     backgroundColor: '#ffffff',
-                  } : {
-                    elevation: 999999,
-                  },
+                    // @ts-ignore
+                    background: '#ffffff',
+                    // @ts-ignore
+                    opacity: 1,
+                  } : {},
                 ]}
                     onStartShouldSetResponder={() => false}
                     onMoveShouldSetResponder={() => false}
@@ -559,6 +556,7 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
                   ref={flatListRef}
                   data={filtered}
                   keyExtractor={item => item.id}
+                  style={styles.list}
                   renderItem={({ item, index }) => {
                     const isManualOption = item.id === MANUAL_INPUT_OPTION_ID;
                     return (
@@ -614,16 +612,19 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
                   windowSize={5}
                 />
               </View>
+            </View>
             )}
 
             {/* Mensagem quando não há resultados */}
             {showList && filtered.length === 0 && searchText.trim().length > 0 && (
-              <View style={styles.dropdown}>
-                <View style={styles.emptyContainer}>
-                  <Text style={styles.emptyText}>Nenhum resultado encontrado</Text>
+              <View style={styles.webDropdownContainer}>
+                <View style={styles.dropdown}>
+                  <View style={styles.emptyContainer}>
+                    <Text style={styles.emptyText}>Nenhum resultado encontrado</Text>
+                  </View>
                 </View>
               </View>
-                )}
+            )}
               </>
             )}
           </>
@@ -673,7 +674,9 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
     ...(Platform.OS === 'web' ? {
-      backgroundColor: '#ffffff !important' as any,
+      backgroundColor: '#ffffff',
+      // @ts-ignore
+      background: '#ffffff',
       opacity: 1,
     } : {}),
   },
@@ -706,35 +709,73 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     fontWeight: '600',
   },
-  dropdown: {
-    position: 'absolute' as ViewStyle['position'],
+  webDropdownContainer: {
+    position: 'absolute' as any,
     top: '100%',
     left: 0,
     right: 0,
+    zIndex: 999999,
+    marginTop: 4,
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore
+      display: 'block',
+      // @ts-ignore
+      visibility: 'visible',
+      opacity: 1,
+      // @ts-ignore
+      zIndex: 999999,
+      // @ts-ignore
+      pointerEvents: 'auto',
+      // @ts-ignore
+      isolation: 'isolate',
+      // @ts-ignore
+      willChange: 'transform',
+    } : {}),
+  },
+  dropdown: {
     backgroundColor: '#ffffff',
     borderWidth: 1.5,
     borderColor: theme.colors.primary,
     borderRadius: theme.borderRadius.md,
     maxHeight: 300,
-    marginTop: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 12,
-    elevation: 999999, // Elevation muito alto para Android
+    elevation: 999999,
     overflow: 'hidden',
-    zIndex: 999999, // Z-index extremamente alto para aparecer acima de TUDO
     ...(Platform.OS === 'web' ? {
-      backgroundColor: '#ffffff !important' as any,
+      boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)',
+      backgroundColor: '#ffffff',
+      // @ts-ignore
+      display: 'block',
+      // @ts-ignore
+      visibility: 'visible',
       opacity: 1,
-      boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3) !important' as any,
-      position: 'absolute' as any,
-      zIndex: '999999 !important' as any,
-      background: '#ffffff !important' as any,
+      // @ts-ignore
+      background: '#ffffff',
+      // @ts-ignore
+      backgroundImage: 'none',
+      // @ts-ignore
+      isolation: 'isolate',
+      // @ts-ignore
+      zIndex: 999999,
+      // @ts-ignore
+      position: 'relative',
+      // @ts-ignore
+      willChange: 'transform',
     } : {}),
   },
   list: {
     maxHeight: 300,
+    backgroundColor: '#ffffff',
+    ...(Platform.OS === 'web' ? {
+      backgroundColor: '#ffffff',
+      // @ts-ignore
+      background: '#ffffff',
+      // @ts-ignore
+      zIndex: 999999,
+    } : {}),
   },
   item: {
     paddingVertical: theme.spacing.md,
@@ -747,8 +788,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     backgroundColor: '#ffffff',
     ...(Platform.OS === 'web' ? {
-      backgroundColor: '#ffffff !important' as any,
+      backgroundColor: '#ffffff',
+      // @ts-ignore
+      background: '#ffffff',
       opacity: 1,
+      // @ts-ignore
+      position: 'relative',
+      // @ts-ignore
+      zIndex: 999999,
+      // @ts-ignore
+      willChange: 'transform',
     } : {}),
   },
   itemHighlighted: {

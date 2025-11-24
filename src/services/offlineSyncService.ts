@@ -87,7 +87,58 @@ export const offlineSyncService = {
   },
 
   async syncPendingRegistros(): Promise<{ successCount: number; totalCount: number }> {
-    const registros = await supabaseDataService.getRegistrosPendentesFromLocal();
+    let registros = await supabaseDataService.getRegistrosPendentesFromLocal();
+
+    // Limpar registros inválidos antes de sincronizar
+    const [comuns, cargos] = await Promise.all([
+      supabaseDataService.getComunsFromLocal(),
+      supabaseDataService.getCargosFromLocal(),
+    ]);
+    
+    const registrosValidos: RegistroPresenca[] = [];
+    const registrosInvalidos: string[] = [];
+    
+    for (const registro of registros) {
+      // Verificar se é registro externo (válido)
+      const isExternalRegistro = registro.comum_id.startsWith('external_');
+      
+      if (isExternalRegistro) {
+        // Registros externos são válidos
+        registrosValidos.push(registro);
+      } else {
+        // Verificar se comum e cargo existem
+        const comum = comuns.find(c => c.id === registro.comum_id);
+        const cargo = cargos.find(c => c.id === registro.cargo_id);
+        
+        if (!comum || !cargo) {
+          console.warn(`⚠️ Registro inválido detectado: ${registro.id}`, {
+            comum_id: registro.comum_id,
+            cargo_id: registro.cargo_id,
+            comum_encontrado: !!comum,
+            cargo_encontrado: !!cargo,
+          });
+          registrosInvalidos.push(registro.id);
+          // Marcar como erro para remover da fila
+          await supabaseDataService.updateRegistroStatus(registro.id, 'error');
+        } else {
+          registrosValidos.push(registro);
+        }
+      }
+    }
+    
+    if (registrosInvalidos.length > 0) {
+      console.log(`🧹 Removendo ${registrosInvalidos.length} registros inválidos da fila`);
+      // Remover registros inválidos
+      for (const id of registrosInvalidos) {
+        try {
+          await supabaseDataService.deleteRegistroFromLocal(id);
+        } catch (error) {
+          console.warn(`⚠️ Erro ao remover registro inválido ${id}:`, error);
+        }
+      }
+    }
+    
+    registros = registrosValidos;
 
     if (registros.length === 0) {
       console.log('📭 Nenhum registro pendente para sincronizar');
@@ -108,6 +159,14 @@ export const offlineSyncService = {
       await Promise.all(
         batch.map(async (registro) => {
           try {
+            // Validar registro antes de enviar
+            if (!registro.comum_id || !registro.cargo_id) {
+              console.error(`❌ Registro ${registro.id} inválido: falta comum_id ou cargo_id`, registro);
+              // Remover registro inválido da fila
+              await supabaseDataService.updateRegistroStatus(registro.id, 'error');
+              return;
+            }
+
             // 🚀 FLUXO OTIMIZADO: Google Sheets PRIMEIRO (como backupcont)
             // 1. Enviar para Google Sheets PRIMEIRO
             console.log(`📤 Enviando registro ${registro.id} para Google Sheets...`);
@@ -126,10 +185,17 @@ export const offlineSyncService = {
               console.warn(`⚠️ Registro ${registro.id} não foi criado no Supabase (mas Google Sheets OK)`);
             }
           } catch (supabaseError) {
+            const errorMessage = supabaseError instanceof Error ? supabaseError.message : String(supabaseError);
+            // Se for erro de dados incompletos, remover da fila
+            if (errorMessage.includes('Dados incompletos')) {
+              console.error(`❌ Registro ${registro.id} tem dados incompletos no Supabase, removendo da fila:`, errorMessage);
+              await supabaseDataService.updateRegistroStatus(registro.id, 'error');
+              return;
+            }
             // 🚨 CRÍTICO: Logar erro detalhado ao invés de apenas warning
             console.error(`❌❌❌ ERRO CRÍTICO ao enviar registro ${registro.id} para Supabase ❌❌❌`, {
               error: supabaseError,
-              message: supabaseError instanceof Error ? supabaseError.message : String(supabaseError),
+              message: errorMessage,
               stack: supabaseError instanceof Error ? supabaseError.stack : undefined,
               registroId: registro.id,
             });
@@ -144,6 +210,13 @@ export const offlineSyncService = {
             console.log(`✅ Registro ${registro.id} sincronizado com sucesso`);
           }
         } else {
+          // Google Sheets falhou - verificar se é erro de dados incompletos
+          if (sheetsResult.error && sheetsResult.error.includes('Dados incompletos')) {
+            console.error(`❌ Registro ${registro.id} tem dados incompletos, removendo da fila:`, sheetsResult.error);
+            // Remover registro inválido da fila
+            await supabaseDataService.updateRegistroStatus(registro.id, 'error');
+            return;
+          }
           // Google Sheets falhou - verificar se é erro de conectividade
           const isNetworkError = 
             sheetsResult.error?.includes('Failed to fetch') ||
@@ -170,6 +243,13 @@ export const offlineSyncService = {
               }
             }
           } catch (supabaseError: any) {
+            const errorMessage = supabaseError instanceof Error ? supabaseError.message : String(supabaseError);
+            // Se for erro de dados incompletos, remover da fila
+            if (errorMessage.includes('Dados incompletos')) {
+              console.error(`❌ Registro ${registro.id} tem dados incompletos no Supabase (fallback), removendo da fila:`, errorMessage);
+              await supabaseDataService.updateRegistroStatus(registro.id, 'error');
+              return;
+            }
             // Verificar se é erro de duplicata
             if (
               supabaseError instanceof Error &&

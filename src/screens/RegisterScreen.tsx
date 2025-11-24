@@ -816,7 +816,7 @@ export const RegisterScreen: React.FC = () => {
       }
 
       // Criar registro com dados do modal
-      const registro: RegistroPresenca = {
+      const registro: RegistroPresenca & { cidade?: string } = {
         pessoa_id: `manual_${data.nome.toUpperCase()}`,
         comum_id: `external_${data.comum.toUpperCase()}_${Date.now()}`, // ID temporário
         cargo_id: data.cargo,
@@ -826,6 +826,7 @@ export const RegisterScreen: React.FC = () => {
         data_hora_registro: getCurrentDateTimeISO(),
         usuario_responsavel: nomeUsuario,
         status_sincronizacao: 'pending',
+        cidade: data.cidade, // Adicionar cidade ao registro
       };
 
       // Preparar dados para Google Sheets
@@ -937,9 +938,9 @@ export const RegisterScreen: React.FC = () => {
           keyboardShouldPersistTaps="handled"
           collapsable={false}
           nestedScrollEnabled={true}
+          showsVerticalScrollIndicator={true}
           scrollEnabled={true}
           bounces={Platform.OS === 'ios'}
-          showsVerticalScrollIndicator={true}
           alwaysBounceVertical={false}
           scrollEventThrottle={16}
           removeClippedSubviews={false}
@@ -951,7 +952,6 @@ export const RegisterScreen: React.FC = () => {
               } 
             : { 
                 flex: 1,
-                width: '100%',
               }}
           refreshControl={
             Platform.OS !== 'web' ? (
@@ -972,7 +972,13 @@ export const RegisterScreen: React.FC = () => {
               </Text>
             </View>
             <View style={styles.cardBody}>
-              <View style={Platform.OS === 'web' ? { position: 'relative' as const, zIndex: 999999, overflow: 'visible' as const } : {}}>
+              <View style={Platform.OS === 'web' ? { 
+                position: 'relative' as const, 
+                zIndex: 999999, 
+                overflow: 'visible' as const,
+                // @ts-ignore
+                isolation: 'isolate',
+              } : {}}>
                 <AutocompleteField
                   label="COMUM CONGREGAÇÃO *"
                   value={selectedComum}
@@ -1086,7 +1092,13 @@ export const RegisterScreen: React.FC = () => {
                     </View>
                   )}
 
-          <View style={Platform.OS === 'web' ? { position: 'relative' as const, zIndex: 999999, overflow: 'visible' as const } : {}}>
+          <View style={Platform.OS === 'web' ? { 
+            position: 'relative' as const, 
+            zIndex: 1, 
+            overflow: 'visible' as const,
+            // @ts-ignore
+            isolation: 'isolate',
+          } : {}}>
           <NameSelectField
             label="Nome e Sobrenome *"
             value={selectedPessoa}
@@ -1274,6 +1286,7 @@ const styles = StyleSheet.create({
     ...(Platform.OS === 'web'
       ? {
           overflow: 'visible' as const,
+          minHeight: '100%',
         }
       : {
           overflow: 'visible' as const,
@@ -1354,7 +1367,9 @@ const styles = StyleSheet.create({
     ...(Platform.OS === 'web'
       ? {
           position: 'relative' as const,
-          zIndex: 1,
+          zIndex: 0,
+          // @ts-ignore
+          isolation: 'isolate',
         }
       : {
           elevation: 0,
