@@ -972,32 +972,46 @@ export const RegisterScreen: React.FC = () => {
               </Text>
             </View>
             <View style={styles.cardBody}>
-              <View style={Platform.OS === 'web' ? { position: 'relative' as const, zIndex: 1000, overflow: 'visible' as const } : {}}>
-              {Platform.OS === 'web' ? (
-                <AutocompleteField
-                  label="COMUM CONGREGAÇÃO *"
-                  value={selectedComum}
-                  options={comunsOptions}
-                  onSelect={option => {
-                    setSelectedComum(String(option.value));
-                    setSelectedPessoa('');
-                    setIsNomeManual(false);
-                  }}
-                  placeholder="Selecione a comum..."
-                />
-              ) : (
-                <SimpleSelectField
-                  label="COMUM CONGREGAÇÃO *"
-                  value={selectedComum}
-                  options={comunsOptions}
-                  onSelect={option => {
-                    setSelectedComum(String(option.value));
-                    setSelectedPessoa('');
-                    setIsNomeManual(false);
-                  }}
-                  placeholder="Selecione a comum..."
-                />
-              )}
+              <View style={[styles.field, Platform.OS === 'web' ? { position: 'relative' as const, zIndex: 1000, overflow: 'visible' as const } : {}]}>
+                <Text style={styles.label}>COMUM CONGREGAÇÃO *</Text>
+                {Platform.OS === 'web' ? (
+                  <select
+                    style={{
+                      ...styles.selectWeb,
+                      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%23999' d='M5 7L1 3h8z'/%3E%3C/svg%3E")`,
+                      backgroundRepeat: 'no-repeat',
+                      backgroundPosition: 'right 10px center',
+                      backgroundSize: '10px 10px',
+                      paddingRight: '35px',
+                    } as any}
+                    value={selectedComum}
+                    onChange={(e) => {
+                      setSelectedComum(e.target.value);
+                      setSelectedPessoa('');
+                      setIsNomeManual(false);
+                    }}
+                    required
+                  >
+                    <option value="">Selecione a comum...</option>
+                    {comunsOptions.map(comum => (
+                      <option key={comum.id} value={comum.value}>
+                        {comum.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <SimpleSelectField
+                    label=""
+                    value={selectedComum}
+                    options={comunsOptions}
+                    onSelect={option => {
+                      setSelectedComum(String(option.value));
+                      setSelectedPessoa('');
+                      setIsNomeManual(false);
+                    }}
+                    placeholder="Selecione a comum..."
+                  />
+                )}
                 <TouchableOpacity
                   onPress={(e) => {
                     e.preventDefault?.();
