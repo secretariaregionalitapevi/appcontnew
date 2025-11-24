@@ -398,101 +398,88 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
             : {})}
         />
 
-        {/* Dropdown - Usar Modal em TODAS as plataformas para garantir funcionamento */}
-        {(() => {
-          const shouldRender = showList && filtered.length > 0;
-          if (shouldRender && Platform.OS === 'web') {
-            console.log('🔍 Renderizando Modal:', {
-              showList,
-              filteredLength: filtered.length,
-              dropdownPosition,
-              hasPosition: dropdownPosition.width > 0,
-            });
-          }
-          return shouldRender;
-        })() && (
-          <Modal
-            visible={true}
-            transparent={true}
-            animationType={Platform.OS === 'web' ? 'fade' : 'slide'}
-            onRequestClose={() => {
-              setShowList(false);
-              if (inputRef.current) {
-                inputRef.current.blur();
-              }
-            }}
-            statusBarTranslucent={true}
-          >
-            <TouchableOpacity
-              style={styles.modalOverlay}
-              activeOpacity={1}
-              onPress={() => {
+        {/* Dropdown - Modal no mobile, inline no web */}
+        {showList && filtered.length > 0 && (
+          Platform.OS === 'web' ? (
+            // WEB: Renderizar diretamente sem Modal
+            <View
+              style={[
+                styles.webDropdownContainer,
+                dropdownPosition.width > 0 ? {
+                  top: dropdownPosition.top,
+                  left: dropdownPosition.left,
+                  width: dropdownPosition.width,
+                } : {
+                  // Fallback: valores padrão
+                  top: 200,
+                  left: 50,
+                  width: 400,
+                },
+              ]}
+            >
+              <View style={styles.webDropdown}>
+                <ScrollView
+                  style={styles.webDropdownList}
+                  nestedScrollEnabled
+                  keyboardShouldPersistTaps="handled"
+                >
+                  {filtered.map((item, index) => (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={[
+                        styles.item,
+                        index === selectedIndex && styles.itemSelected,
+                      ]}
+                      onPress={() => {
+                        if (blurTimeoutRef.current) {
+                          clearTimeout(blurTimeoutRef.current);
+                          blurTimeoutRef.current = null;
+                        }
+                        setSelectedIndex(index);
+                        handleSelect(item);
+                        setShowList(false);
+                        if (inputRef.current) {
+                          inputRef.current.blur();
+                        }
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <FontAwesome5
+                        name={icon}
+                        size={12}
+                        color={theme.colors.textSecondary}
+                        style={styles.icon}
+                      />
+                      <Text style={styles.itemText}>{item.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            </View>
+          ) : (
+            // MOBILE: Usar Modal
+            <Modal
+              visible={true}
+              transparent={true}
+              animationType="slide"
+              onRequestClose={() => {
                 setShowList(false);
                 if (inputRef.current) {
                   inputRef.current.blur();
                 }
               }}
+              statusBarTranslucent={true}
             >
-              {Platform.OS === 'web' ? (
-                // WEB: Dropdown posicionado abaixo do input
-                <View
-                  style={[
-                    styles.webDropdownContainer,
-                    dropdownPosition.width > 0 ? {
-                      top: dropdownPosition.top,
-                      left: dropdownPosition.left,
-                      width: dropdownPosition.width,
-                    } : {
-                      // Fallback: tentar calcular novamente ou usar valores padrão
-                      top: 100,
-                      left: 50,
-                      width: 400,
-                    },
-                  ]}
-                  onStartShouldSetResponder={() => true}
-                  onMoveShouldSetResponder={() => true}
-                >
-                  <View style={styles.webDropdown}>
-                    <ScrollView
-                      style={styles.webDropdownList}
-                      nestedScrollEnabled
-                      keyboardShouldPersistTaps="handled"
-                    >
-                      {filtered.map((item, index) => (
-                        <TouchableOpacity
-                          key={item.id}
-                          style={[
-                            styles.item,
-                            index === selectedIndex && styles.itemSelected,
-                          ]}
-                          onPress={() => {
-                            if (blurTimeoutRef.current) {
-                              clearTimeout(blurTimeoutRef.current);
-                              blurTimeoutRef.current = null;
-                            }
-                            setSelectedIndex(index);
-                            handleSelect(item);
-                            setShowList(false);
-                            if (inputRef.current) {
-                              inputRef.current.blur();
-                            }
-                          }}
-                          activeOpacity={0.7}
-                        >
-                          <FontAwesome5
-                            name={icon}
-                            size={12}
-                            color={theme.colors.textSecondary}
-                            style={styles.icon}
-                          />
-                          <Text style={styles.itemText}>{item.label}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
-                  </View>
-                </View>
-              ) : (
-                // MOBILE: Modal fullscreen
+              <TouchableOpacity
+                style={styles.modalOverlay}
+                activeOpacity={1}
+                onPress={() => {
+                  setShowList(false);
+                  if (inputRef.current) {
+                    inputRef.current.blur();
+                  }
+                }}
+              >
                 <SafeAreaView style={styles.modalContainer}>
                   <TouchableOpacity
                     activeOpacity={1}
@@ -548,9 +535,9 @@ export const AutocompleteField: React.FC<AutocompleteFieldProps> = ({
                     </View>
                   </TouchableOpacity>
                 </SafeAreaView>
-              )}
-            </TouchableOpacity>
-          </Modal>
+              </TouchableOpacity>
+            </Modal>
+          )
         )}
 
         {/* Mensagem quando não há resultados */}
@@ -733,14 +720,19 @@ const styles = StyleSheet.create({
     } : {}),
   },
   webDropdownContainer: {
-    position: 'absolute' as any,
-    zIndex: 100000,
     ...(Platform.OS === 'web' ? {
       position: 'fixed' as any,
+      zIndex: 100000,
       pointerEvents: 'auto' as any,
       // @ts-ignore
       display: 'block',
-    } : {}),
+      // @ts-ignore
+      visibility: 'visible',
+      opacity: 1,
+    } : {
+      position: 'absolute' as any,
+      zIndex: 100000,
+    }),
   },
   webDropdown: {
     backgroundColor: '#ffffff',
