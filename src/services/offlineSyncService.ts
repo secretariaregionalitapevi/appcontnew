@@ -148,25 +148,21 @@ export const offlineSyncService = {
     let successCount = 0;
     const totalCount = registros.length;
     
-    // Processar em lotes de 10 para ser mais rápido
-    const batchSize = 10;
-    for (let i = 0; i < registros.length; i += batchSize) {
-      const batch = registros.slice(i, i + batchSize);
+    // 🚨 CRÍTICO: Processar SEQUENCIALMENTE (como ContPedras) para garantir que todos sejam enviados
+    // Processamento paralelo pode causar falhas silenciosas no Android
+    for (let i = 0; i < registros.length; i++) {
+      const registro = registros[i];
       
-      // Processar lote em paralelo (mas limitado)
-      await Promise.all(
-        batch.map(async (registro) => {
-          try {
-            // Validar registro antes de enviar
-            if (!registro.comum_id || !registro.cargo_id) {
-              console.error(`❌ Registro ${registro.id} inválido: falta comum_id ou cargo_id`, registro);
-              // Remover registro inválido da fila
-              await supabaseDataService.updateRegistroStatus(registro.id, 'error');
-              return;
-            }
+      try {
+        // Validar registro antes de enviar
+        if (!registro.comum_id || !registro.cargo_id) {
+          console.error(`❌ Registro ${registro.id} inválido: falta comum_id ou cargo_id`);
+          await supabaseDataService.updateRegistroStatus(registro.id, 'error');
+          continue;
+        }
 
-            // 🚀 FLUXO OTIMIZADO: Google Sheets PRIMEIRO
-            const sheetsResult = await googleSheetsService.sendRegistroToSheet(registro);
+        // 🚀 FLUXO: Google Sheets PRIMEIRO (como ContPedras)
+        const sheetsResult = await googleSheetsService.sendRegistroToSheet(registro);
         
         if (sheetsResult.success) {
           // Enviar para Supabase em background (não bloquear)
@@ -183,7 +179,7 @@ export const offlineSyncService = {
           // Google Sheets falhou - verificar tipo de erro
           if (sheetsResult.error?.includes('Dados incompletos')) {
             await supabaseDataService.updateRegistroStatus(registro.id, 'error');
-            return;
+            continue;
           }
           
           const isNetworkError = 
@@ -212,11 +208,15 @@ export const offlineSyncService = {
             }
           }
         }
+        
+        // Pausa entre envios para evitar sobrecarga (como ContPedras)
+        if (i < registros.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
       } catch (error) {
-        // Erro silencioso - manter na fila para próxima tentativa
+        // Logar erro mas continuar com próximo registro
+        console.error(`❌ Erro ao processar registro ${registro.id}:`, error);
       }
-        })
-      );
     }
 
     return { successCount, totalCount };

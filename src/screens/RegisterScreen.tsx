@@ -447,39 +447,35 @@ export const RegisterScreen: React.FC = () => {
     // Esta é a verificação mais confiável e funciona tanto na web quanto no mobile
     let isOfflineNow = false;
     
-    // Verificação PRIMÁRIA: navigator.onLine (mais confiável)
-    if (Platform.OS === 'web' && typeof navigator !== 'undefined') {
-      isOfflineNow = !navigator.onLine;
-      console.log('🌐 [OFFLINE CHECK] Web - navigator.onLine:', navigator.onLine, '→ isOfflineNow:', isOfflineNow);
-    } else if (typeof navigator !== 'undefined' && 'onLine' in navigator) {
-      // Mobile com suporte a navigator.onLine
-      isOfflineNow = !navigator.onLine;
-      console.log('📱 [OFFLINE CHECK] Mobile - navigator.onLine:', navigator.onLine, '→ isOfflineNow:', isOfflineNow);
-    } else {
-      // Fallback: usar hook isOnline
+    // 🚨 CRÍTICO iOS: No iOS, sempre verificar múltiplas fontes e ser mais conservador
+    if (Platform.OS === 'ios') {
+      // iOS: Verificar hook primeiro, depois navigator
       isOfflineNow = !isOnline;
-      console.log('📱 [OFFLINE CHECK] Mobile - isOnline (hook):', isOnline, '→ isOfflineNow:', isOfflineNow);
+      
+      // Se navigator.onLine existir e for false, confiar nele
+      if (typeof navigator !== 'undefined' && 'onLine' in navigator && navigator.onLine === false) {
+        isOfflineNow = true;
+      }
+      
+      // Se houver qualquer dúvida, assumir offline para garantir salvamento na fila
+      if (!isOnline) {
+        isOfflineNow = true;
+      }
+    } else if (Platform.OS === 'android') {
+      // Android: Verificar hook primeiro
+      isOfflineNow = !isOnline;
+      
+      // Se navigator.onLine existir e for false, confiar nele
+      if (typeof navigator !== 'undefined' && 'onLine' in navigator && navigator.onLine === false) {
+        isOfflineNow = true;
+      }
+    } else if (Platform.OS === 'web') {
+      // Web: Usar navigator.onLine diretamente
+      isOfflineNow = typeof navigator !== 'undefined' ? !navigator.onLine : !isOnline;
+    } else {
+      // Outras plataformas: usar hook
+      isOfflineNow = !isOnline;
     }
-    
-    // 🚨 VERIFICAÇÃO SECUNDÁRIA: Se qualquer verificação indicar offline, assumir offline
-    // Isso garante que mesmo com inconsistências, salvamos na fila
-    if (!isOfflineNow && !isOnline) {
-      isOfflineNow = true;
-      console.log('⚠️ [OFFLINE CHECK] Conflito detectado - hook diz offline, forçando isOfflineNow = true');
-    }
-    
-    // 🚨 VERIFICAÇÃO FINAL: Se navigator.onLine for false, SEMPRE assumir offline (como BACKUPCONT)
-    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-      isOfflineNow = true;
-      console.log('📴 [OFFLINE CHECK] navigator.onLine = false, forçando offline');
-    }
-    
-    console.log('🔍 [OFFLINE CHECK] RESULTADO FINAL:', {
-      isOfflineNow,
-      navigatorOnLine: typeof navigator !== 'undefined' ? navigator.onLine : 'N/A',
-      isOnline,
-      platform: Platform.OS,
-    });
     
     // Se estiver offline, salvar IMEDIATAMENTE na fila (como BACKUPCONT)
     if (isOfflineNow) {
