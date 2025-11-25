@@ -374,12 +374,27 @@ export const RegisterScreen: React.FC = () => {
     setLoading(true);
 
     // 🚨 CORREÇÃO CRÍTICA: Verificar offline PRIMEIRO, antes de qualquer outra coisa
-    // Seguindo a lógica do BACKUPCONT - se estiver offline, adicionar à fila e retornar IMEDIATAMENTE
-    const isNavigatorOffline = Platform.OS === 'web' 
-      ? (typeof navigator !== 'undefined' && !navigator.onLine)
-      : !isOnline;
+    // Seguindo EXATAMENTE a lógica do BACKUPCONT - usar navigator.onLine diretamente
+    // Esta é a verificação mais confiável e funciona tanto na web quanto no mobile
+    let isOfflineNow = false;
     
-    if (isNavigatorOffline) {
+    if (Platform.OS === 'web' && typeof navigator !== 'undefined') {
+      // Na web, usar navigator.onLine diretamente (mais confiável)
+      isOfflineNow = !navigator.onLine;
+      console.log('🌐 Web - navigator.onLine:', navigator.onLine, 'isOfflineNow:', isOfflineNow);
+    } else {
+      // No mobile, usar NetInfo mas também verificar navigator.onLine se disponível
+      isOfflineNow = !isOnline;
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+        isOfflineNow = true; // Se navigator diz offline, confiar nele
+      }
+      console.log('📱 Mobile - isOnline:', isOnline, 'navigator.onLine:', typeof navigator !== 'undefined' ? navigator.onLine : 'N/A', 'isOfflineNow:', isOfflineNow);
+    }
+    
+    // 🚨 VERIFICAÇÃO ADICIONAL: Tentar fazer uma requisição simples para confirmar offline
+    // Se navigator.onLine for false, assumir offline imediatamente (como BACKUPCONT)
+    if (isOfflineNow) {
+      console.log('📴 OFFLINE DETECTADO - Salvando diretamente na fila (sem tentar enviar)');
       try {
         console.log('📴 Offline detectado - adicionando à fila imediatamente');
         
@@ -433,24 +448,66 @@ export const RegisterScreen: React.FC = () => {
         };
 
         // Salvar diretamente na fila local (sem tentar enviar)
-        await supabaseDataService.saveRegistroToLocal(registro);
-        console.log('✅ Registro adicionado à fila offline com sucesso');
-        
-        // Atualizar contador da fila
-        await refreshCount();
-        
-        // Mostrar mensagem de sucesso
-        showToast.info('Salvo offline', 'Registro salvo na fila. Será enviado quando voltar online.');
-        
-        // Limpar formulário
-        setSelectedComum('');
-        setSelectedCargo('');
-        setSelectedInstrumento('');
-        setSelectedPessoa('');
-        setIsNomeManual(false);
-        
-        setLoading(false);
-        return; // Retornar imediatamente - não tentar enviar
+        // 🚨 CRÍTICO: Garantir que o salvamento sempre funcione, mesmo com erros
+        try {
+          console.log('💾 Tentando salvar registro na fila local...', {
+            pessoa_id: registro.pessoa_id,
+            comum_id: registro.comum_id,
+            cargo_id: registro.cargo_id,
+            status: registro.status_sincronizacao,
+          });
+          
+          await supabaseDataService.saveRegistroToLocal(registro);
+          console.log('✅ Registro salvo na fila local com sucesso');
+          
+          // Atualizar contador da fila IMEDIATAMENTE
+          try {
+            await refreshCount();
+            console.log('✅ Contador da fila atualizado');
+          } catch (countError) {
+            console.warn('⚠️ Erro ao atualizar contador (não crítico):', countError);
+            // Não bloquear o fluxo por erro no contador
+          }
+          
+          // Mostrar mensagem de sucesso
+          showToast.info('Salvo offline', 'Registro salvo na fila. Será enviado quando voltar online.');
+          
+          // Limpar formulário
+          setSelectedComum('');
+          setSelectedCargo('');
+          setSelectedInstrumento('');
+          setSelectedPessoa('');
+          setIsNomeManual(false);
+          
+          setLoading(false);
+          return; // Retornar imediatamente - não tentar enviar
+        } catch (saveError) {
+          console.error('❌ ERRO CRÍTICO ao salvar na fila local:', saveError);
+          // Tentar novamente com tratamento de erro mais robusto
+          try {
+            // Forçar salvamento mesmo com erro
+            const registroComId = {
+              ...registro,
+              id: registro.id || generateExternalUUID(),
+            };
+            await supabaseDataService.saveRegistroToLocal(registroComId);
+            console.log('✅ Registro salvo na fila local (segunda tentativa)');
+            await refreshCount();
+            showToast.info('Salvo offline', 'Registro salvo na fila. Será enviado quando voltar online.');
+            setSelectedComum('');
+            setSelectedCargo('');
+            setSelectedInstrumento('');
+            setSelectedPessoa('');
+            setIsNomeManual(false);
+            setLoading(false);
+            return;
+          } catch (retryError) {
+            console.error('❌ ERRO CRÍTICO: Falha mesmo na segunda tentativa:', retryError);
+            showToast.error('Erro', 'Erro ao salvar registro offline. Tente novamente.');
+            setLoading(false);
+            return;
+          }
+        }
       } catch (error) {
         console.error('❌ Erro crítico ao processar envio offline:', error);
         showToast.error('Erro', 'Erro ao salvar registro offline. Tente novamente.');

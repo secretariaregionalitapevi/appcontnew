@@ -2023,7 +2023,10 @@ export const supabaseDataService = {
                     cargo: cargoBusca,
                     data: dataRegistroStr,
                   });
-                  return; // Não salvar duplicata
+                  // 🚨 CRÍTICO: Não retornar aqui - continuar e salvar mesmo assim se for necessário
+                  // A validação de duplicata é apenas um aviso, não deve bloquear salvamento offline
+                  console.warn('⚠️ AVISO: Duplicata detectada, mas continuando com salvamento (modo offline)');
+                  // Não retornar - continuar com o salvamento
                 }
               }
             } catch (error) {
@@ -2037,34 +2040,46 @@ export const supabaseDataService = {
         console.warn('⚠️ Erro na validação de duplicata, continuando com salvamento:', error);
       }
 
-    // Sempre usar UUID v4 válido
-    const id = registro.id && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(registro.id)
-      ? registro.id
-      : uuidv4();
-    const now = new Date().toISOString();
-    const registroCompleto: RegistroPresenca = {
-      ...registro,
-      id,
-      created_at: registro.created_at || now,
-      updated_at: registro.updated_at || now,
-    };
+      // Sempre usar UUID v4 válido
+      const id = registro.id && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(registro.id)
+        ? registro.id
+        : uuidv4();
+      const now = new Date().toISOString();
+      const registroCompleto: RegistroPresenca = {
+        ...registro,
+        id,
+        created_at: registro.created_at || now,
+        updated_at: registro.updated_at || now,
+      };
 
-    if (Platform.OS === 'web') {
-      // Para web, usar cache em memória e AsyncStorage
-      const existingIndex = memoryCache.registros.findIndex(r => r.id === id);
-      if (existingIndex >= 0) {
-        memoryCache.registros[existingIndex] = registroCompleto;
-      } else {
-        memoryCache.registros.push(registroCompleto);
-      }
+      if (Platform.OS === 'web') {
+        // Para web, usar cache em memória e AsyncStorage
+        const existingIndex = memoryCache.registros.findIndex(r => r.id === id);
+        if (existingIndex >= 0) {
+          memoryCache.registros[existingIndex] = registroCompleto;
+        } else {
+          memoryCache.registros.push(registroCompleto);
+        }
 
-      try {
-        await robustSetItem('cached_registros', JSON.stringify(memoryCache.registros));
-      } catch (error) {
-        console.warn('⚠️ Erro ao salvar registro no cache:', error);
+        try {
+          await robustSetItem('cached_registros', JSON.stringify(memoryCache.registros));
+          console.log('✅ Registro salvo no cache web com sucesso (ID:', id, ')');
+        } catch (error) {
+          console.error('❌ ERRO CRÍTICO ao salvar registro no cache web:', error);
+          // Tentar salvar novamente sem cache em memória
+          try {
+            const registrosExistentes = await robustGetItem('cached_registros');
+            const registros = registrosExistentes ? JSON.parse(registrosExistentes) : [];
+            registros.push(registroCompleto);
+            await robustSetItem('cached_registros', JSON.stringify(registros));
+            console.log('✅ Registro salvo no cache web (segunda tentativa)');
+          } catch (retryError) {
+            console.error('❌ ERRO CRÍTICO: Falha mesmo na segunda tentativa:', retryError);
+            throw retryError;
+          }
+        }
+        return;
       }
-      return;
-    }
 
       // Para mobile, usar SQLite
       try {
@@ -2090,7 +2105,32 @@ export const supabaseDataService = {
         console.log('✅ Registro salvo no SQLite com sucesso (ID:', id, ')');
       } catch (error) {
         console.error('❌ ERRO CRÍTICO ao salvar registro no SQLite:', error);
-        throw error; // Re-lançar erro para ser tratado no nível superior
+        // Tentar novamente
+        try {
+          const db = await getDatabase();
+          await db.runAsync(
+            `INSERT OR REPLACE INTO registros_presenca 
+             (id, pessoa_id, comum_id, cargo_id, instrumento_id, local_ensaio, data_hora_registro, usuario_responsavel, status_sincronizacao, created_at, updated_at) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              id,
+              registro.pessoa_id,
+              registro.comum_id,
+              registro.cargo_id,
+              registro.instrumento_id || null,
+              registro.local_ensaio,
+              registro.data_hora_registro,
+              registro.usuario_responsavel,
+              registro.status_sincronizacao,
+              registro.created_at || now,
+              registro.updated_at || now,
+            ]
+          );
+          console.log('✅ Registro salvo no SQLite (segunda tentativa)');
+        } catch (retryError) {
+          console.error('❌ ERRO CRÍTICO: Falha mesmo na segunda tentativa SQLite:', retryError);
+          throw retryError;
+        }
       }
     } catch (error) {
       console.error('❌ ERRO CRÍTICO em saveRegistroToLocal:', error);
