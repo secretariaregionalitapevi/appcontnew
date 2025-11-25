@@ -478,10 +478,9 @@ export const RegisterScreen: React.FC = () => {
     }
     
     // Se estiver offline, salvar IMEDIATAMENTE na fila (como BACKUPCONT)
-    if (isOfflineNow) {
-      console.log('📴 [OFFLINE MODE] OFFLINE DETECTADO - Salvando diretamente na fila (sem tentar enviar)');
+    // 🚨 CRÍTICO iOS: Se houver qualquer dúvida no iOS, salvar na fila
+    if (isOfflineNow || (Platform.OS === 'ios' && !isOnline)) {
       try {
-        console.log('📴 Offline detectado - adicionando à fila imediatamente');
         
         // Preparar registro para salvar na fila
         const localEnsaio = await localStorageService.getLocalEnsaio();
