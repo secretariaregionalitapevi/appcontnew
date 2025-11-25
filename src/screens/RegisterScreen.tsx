@@ -373,6 +373,92 @@ export const RegisterScreen: React.FC = () => {
 
     setLoading(true);
 
+    // 🚨 CORREÇÃO CRÍTICA: Verificar offline PRIMEIRO, antes de qualquer outra coisa
+    // Seguindo a lógica do BACKUPCONT - se estiver offline, adicionar à fila e retornar IMEDIATAMENTE
+    const isNavigatorOffline = Platform.OS === 'web' 
+      ? (typeof navigator !== 'undefined' && !navigator.onLine)
+      : !isOnline;
+    
+    if (isNavigatorOffline) {
+      try {
+        console.log('📴 Offline detectado - adicionando à fila imediatamente');
+        
+        // Preparar registro para salvar na fila
+        const localEnsaio = await localStorageService.getLocalEnsaio();
+        
+        // Usar nome do usuário ao invés do ID
+        let nomeCompletoUsuario = user.nome;
+        if (!nomeCompletoUsuario || nomeCompletoUsuario.trim() === '') {
+          const emailSemDominio = user.email?.split('@')[0] || '';
+          nomeCompletoUsuario = emailSemDominio.replace(/[._]/g, ' ').trim();
+        }
+        const nomeUsuario = formatRegistradoPor(nomeCompletoUsuario || user.id);
+        
+        // Buscar classe da organista do banco de dados se for Organista
+        let classeOrganistaDB: string | undefined = undefined;
+        if (isOrganista && !isNomeManual) {
+          const pessoaSelecionada = pessoas.find(p => p.id === selectedPessoa);
+          if (pessoaSelecionada && pessoaSelecionada.classe_organista) {
+            classeOrganistaDB = pessoaSelecionada.classe_organista;
+          } else {
+            classeOrganistaDB = 'OFICIALIZADA';
+          }
+        }
+
+        // Para Candidatos: buscar instrumento da pessoa selecionada
+        let instrumentoCandidato: string | null = null;
+        if (isCandidato && !isNomeManual) {
+          const pessoaSelecionada = pessoas.find(p => p.id === selectedPessoa);
+          if (pessoaSelecionada && pessoaSelecionada.instrumento_id) {
+            instrumentoCandidato = pessoaSelecionada.instrumento_id;
+          }
+        }
+
+        const pessoaIdFinal = isNomeManual ? `manual_${selectedPessoa}` : selectedPessoa;
+
+        const registro: RegistroPresenca = {
+          pessoa_id: pessoaIdFinal,
+          comum_id: selectedComum,
+          cargo_id: selectedCargo,
+          instrumento_id: isCandidato 
+            ? instrumentoCandidato 
+            : (showInstrumento && selectedInstrumento) 
+              ? selectedInstrumento 
+              : null,
+          classe_organista: classeOrganistaDB,
+          local_ensaio: localEnsaio || 'Não definido',
+          data_hora_registro: getCurrentDateTimeISO(),
+          usuario_responsavel: nomeUsuario,
+          status_sincronizacao: 'pending',
+        };
+
+        // Salvar diretamente na fila local (sem tentar enviar)
+        await supabaseDataService.saveRegistroToLocal(registro);
+        console.log('✅ Registro adicionado à fila offline com sucesso');
+        
+        // Atualizar contador da fila
+        await refreshCount();
+        
+        // Mostrar mensagem de sucesso
+        showToast.info('Salvo offline', 'Registro salvo na fila. Será enviado quando voltar online.');
+        
+        // Limpar formulário
+        setSelectedComum('');
+        setSelectedCargo('');
+        setSelectedInstrumento('');
+        setSelectedPessoa('');
+        setIsNomeManual(false);
+        
+        setLoading(false);
+        return; // Retornar imediatamente - não tentar enviar
+      } catch (error) {
+        console.error('❌ Erro crítico ao processar envio offline:', error);
+        showToast.error('Erro', 'Erro ao salvar registro offline. Tente novamente.');
+        setLoading(false);
+        return;
+      }
+    }
+
     // Preparar registro antes do try para estar disponível no catch
     const localEnsaio = await localStorageService.getLocalEnsaio();
     
