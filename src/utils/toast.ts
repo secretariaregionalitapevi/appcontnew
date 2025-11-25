@@ -104,18 +104,22 @@ if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof document !=
 
 export const showToast = {
   success: (title: string, message?: string) => {
+    // Se message não foi fornecido, usar title como mensagem única (igual ao contpedras)
+    const finalMessage = message || title;
+    const finalTitle = message ? title : '';
+    
     if (Platform.OS === 'web') {
       // Usar SweetAlert2 na web - versão mais elegante e rápida
       const Swal = getSwal();
       if (Swal) {
         Swal.fire({
           icon: 'success',
-          title: title,
-          text: message || '',
-          timer: 2000, // Reduzido para 2 segundos
-          timerProgressBar: false, // Sem barra de progresso
-          showConfirmButton: false, // Sem botão OK
-          toast: true, // Modo toast (menor e mais elegante)
+          title: finalTitle || finalMessage,
+          text: finalTitle ? finalMessage : '',
+          timer: 2000,
+          timerProgressBar: false,
+          showConfirmButton: false,
+          toast: true,
           position: 'top-end',
           width: 'auto',
           padding: '1rem',
@@ -126,24 +130,36 @@ export const showToast = {
           },
         });
       } else {
-        // Fallback para console
-        console.log(`✅ ${title}: ${message || ''}`);
+        console.log(`✅ ${finalMessage}`);
       }
     } else if (Toast) {
-      Toast.show({
-        type: 'success',
-        text1: title,
-        text2: message,
-        position: 'top',
-        visibilityTime: 2000, // Reduzido para 2 segundos
-        autoHide: true,
-        topOffset: Platform.OS === 'ios' ? 50 : 40,
-        text1Style: { fontSize: 14, fontWeight: '600' },
-        text2Style: { fontSize: 12 },
-      });
+      // No mobile, usar apenas text1 se não houver message (igual ao contpedras)
+      // Garantir que funcione no iOS e Android
+      try {
+        Toast.show({
+          type: 'success',
+          text1: finalTitle || finalMessage,
+          text2: finalTitle ? finalMessage : undefined,
+          position: 'top',
+          visibilityTime: 2000,
+          autoHide: true,
+          topOffset: Platform.OS === 'ios' ? 60 : 50,
+          text1Style: { fontSize: 14, fontWeight: '600' },
+          text2Style: { fontSize: 12 },
+        });
+      } catch (toastError) {
+        // Fallback se Toast falhar
+        console.log(`✅ ${finalMessage}`);
+        if (Platform.OS !== 'web') {
+          Alert.alert('Sucesso', finalMessage);
+        }
+      }
     } else {
-      // Fallback mínimo para mobile sem Toast
-      console.log(`✅ ${title}: ${message || ''}`);
+      console.log(`✅ ${finalMessage}`);
+      // Fallback para iOS se Toast não estiver disponível
+      if (Platform.OS === 'ios') {
+        Alert.alert('Sucesso', finalMessage);
+      }
     }
   },
 

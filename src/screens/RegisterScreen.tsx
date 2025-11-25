@@ -128,12 +128,13 @@ export const RegisterScreen: React.FC = () => {
       // Atualizar contador após sincronizar
       await refreshCount();
       
-      // Mostrar toast se registros foram sincronizados
+      // Mostrar toast se registros foram sincronizados (igual ao contpedras)
       if (result.successCount > 0) {
         const mensagem = result.successCount === 1
-          ? '1 registro enviado com sucesso'
-          : `${result.successCount} registros enviados com sucesso`;
-        showToast.success('Sincronização concluída', mensagem);
+          ? '1 item sincronizado'
+          : `${result.successCount} itens sincronizados`;
+        // Mostrar apenas mensagem, sem título (igual ao contpedras)
+        showToast.success(mensagem);
         console.log(`✅ [SYNC] ${result.successCount} registro(s) sincronizado(s) com sucesso`);
       } else if (result.totalCount > 0) {
         console.warn('⚠️ [SYNC] Nenhum registro foi enviado (pode haver erros)');

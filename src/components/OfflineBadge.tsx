@@ -38,7 +38,8 @@ export const OfflineBadge: React.FC<OfflineBadgeProps> = ({ count, syncing = fal
     if (count === 0) {
       return 'check-circle';
     }
-    return 'clock';
+    // Usar hourglass (ampulheta) quando há pendentes, como no contpedras
+    return 'hourglass-half';
   };
 
   const getIconColor = () => {
