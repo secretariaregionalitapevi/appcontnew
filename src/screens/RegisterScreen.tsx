@@ -1376,12 +1376,18 @@ export const RegisterScreen: React.FC = () => {
             showToast.error('Erro', 'Registro duplicado detectado');
           }
         } else {
-          throw new Error(result.error || 'Erro ao enviar registro');
+          // Mostrar erro específico
+          const errorMessage = result.error || 'Erro ao enviar registro';
+          console.error('❌ [MODAL] Erro ao enviar registro externo:', errorMessage);
+          showToast.error('Erro', errorMessage);
+          throw new Error(errorMessage);
         }
       }
     } catch (error) {
-      console.error('Erro ao salvar novo registro:', error);
-      showToast.error('Erro', 'Erro ao salvar registro. Tente novamente.');
+      console.error('❌ [MODAL] Erro ao salvar novo registro:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao salvar registro. Tente novamente.';
+      showToast.error('Erro', errorMessage);
+      throw error; // Re-lançar para o modal tratar
     }
   };
 

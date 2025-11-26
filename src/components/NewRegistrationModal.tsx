@@ -168,24 +168,36 @@ export const NewRegistrationModal: React.FC<NewRegistrationModalProps> = ({
         classeFinal = selectedClasse || 'Oficializada';
       }
 
-      await onSave({
-        comum: comum.trim(),
-        cidade: cidade.trim(),
-        cargo: selectedCargo,
-        instrumento: showInstrumento ? selectedInstrumento : undefined,
-        classe: classeFinal,
-        nome: nome.trim(),
-      });
+      // 🚨 CRÍTICO: Aguardar resultado do onSave e tratar erros
+      try {
+        await onSave({
+          comum: comum.trim(),
+          cidade: cidade.trim(),
+          cargo: selectedCargo,
+          instrumento: showInstrumento ? selectedInstrumento : undefined,
+          classe: classeFinal,
+          nome: nome.trim(),
+        });
 
-      // Limpar campos após salvar
-      setComum('');
-      setCidade('');
-      setSelectedCargo('');
-      setSelectedInstrumento('');
-      setSelectedClasse('');
-      setNome('');
-      setErrors({});
-      onClose();
+        // Limpar campos após salvar (só se não houver erro)
+        setComum('');
+        setCidade('');
+        setSelectedCargo('');
+        setSelectedInstrumento('');
+        setSelectedClasse('');
+        setNome('');
+        setErrors({});
+        
+        // Fechar modal após sucesso (aguardar um pouco para toast aparecer)
+        setTimeout(() => {
+          onClose();
+        }, 500);
+      } catch (error) {
+        // Erro já foi tratado no handleSaveNewRegistration
+        // Não fechar modal se houver erro
+        console.error('❌ [MODAL] Erro ao salvar:', error);
+        throw error; // Re-lançar para o catch externo tratar
+      }
     } catch (error) {
       console.error('Erro ao salvar novo registro:', error);
     } finally {

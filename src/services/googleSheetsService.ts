@@ -109,13 +109,30 @@ export const googleSheetsService = {
         throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
 
-      const result = await response.json();
-      console.log('✅ [EXTERNAL] Google Sheets: Resposta:', result);
+      // Tentar parsear JSON, mas se falhar, considerar sucesso (no-cors pode retornar texto vazio)
+      let result: any = null;
+      try {
+        const responseText = await response.text();
+        console.log('📥 [EXTERNAL] Resposta do Google Sheets (texto):', responseText);
+        
+        if (responseText.trim()) {
+          result = JSON.parse(responseText);
+          console.log('✅ [EXTERNAL] Google Sheets: Resposta (JSON):', result);
+        } else {
+          // Resposta vazia é comum em no-cors, considerar sucesso
+          console.log('✅ [EXTERNAL] Google Sheets: Resposta vazia (no-cors) - considerando sucesso');
+          return { success: true };
+        }
+      } catch (parseError) {
+        // Se não conseguir parsear, mas a resposta foi OK, considerar sucesso
+        console.log('⚠️ [EXTERNAL] Não foi possível parsear resposta, mas status é OK - considerando sucesso');
+        return { success: true };
+      }
 
-      if (result.success) {
+      if (result && result.success !== false) {
         return { success: true };
       } else {
-        throw new Error(result.message || 'Erro desconhecido ao enviar para Google Sheets');
+        throw new Error(result?.message || 'Erro desconhecido ao enviar para Google Sheets');
       }
     } catch (error: any) {
       console.error('❌ [EXTERNAL] Erro ao enviar registro externo para Google Sheets:', error);
