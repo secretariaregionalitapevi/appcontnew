@@ -1571,7 +1571,7 @@ export const RegisterScreen: React.FC = () => {
 
               <PrimaryButton
                 title="ENVIAR REGISTRO"
-                onPress={() => {
+                onPress={async () => {
                   console.log('🔘 [BUTTON] Botão ENVIAR REGISTRO pressionado');
                   console.log('📊 [BUTTON] Estado atual:', {
                     loading,
@@ -1579,15 +1579,27 @@ export const RegisterScreen: React.FC = () => {
                     selectedCargo: !!selectedCargo,
                     selectedPessoa: !!selectedPessoa,
                     isOnline,
+                    newRegistrationModalVisible,
                   });
-                  handleSubmit().catch(error => {
+                  
+                  // 🚨 CRÍTICO: Fechar modal se estiver aberto antes de processar
+                  if (newRegistrationModalVisible) {
+                    console.log('🚨 [BUTTON] Modal aberto detectado - fechando antes de processar...');
+                    setNewRegistrationModalVisible(false);
+                    // Aguardar um pouco para garantir que o modal fechou
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                  }
+                  
+                  try {
+                    await handleSubmit();
+                  } catch (error) {
                     console.error('❌ [BUTTON] Erro não tratado no handleSubmit:', error);
                     setLoading(false);
                     showToast.error('Erro', 'Erro ao processar registro. Tente novamente.');
-                  });
+                  }
                 }}
                 loading={loading}
-                disabled={loading}
+                disabled={loading || newRegistrationModalVisible}
                 style={styles.submitButton}
               />
             </View>
