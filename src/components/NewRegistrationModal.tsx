@@ -73,8 +73,17 @@ export const NewRegistrationModal: React.FC<NewRegistrationModalProps> = ({
   const isMusico = cargoNome.toLowerCase().includes('músico');
   const isOrganista = cargoNome === 'Organista';
   const showInstrumento = isMusico && !isOrganista;
-  const showClasse = isOrganista || cargoNome === 'Examinadora' || cargoNome === 'Instrutora' || 
-                     (cargoNome.toLowerCase().includes('secretaria') && cargoNome.toLowerCase().includes('música'));
+  
+  // 🚨 CARGOS QUE DEVEM SER OFICIALIZADAS AUTOMATICAMENTE (sem mostrar campo)
+  const cargosOficializadaAutomatica = [
+    'Instrutora',
+    'Secretária da Música',
+    'Examinadora'
+  ];
+  const isCargoOficializadaAutomatica = cargosOficializadaAutomatica.includes(cargoNome);
+  
+  // Mostrar campo de classe APENAS para Organista (outros cargos são oficializados automaticamente)
+  const showClasse = isOrganista && !isCargoOficializadaAutomatica;
 
   // Opções de classe
   const classesOptions = [
@@ -128,6 +137,8 @@ export const NewRegistrationModal: React.FC<NewRegistrationModalProps> = ({
     if (showInstrumento && !selectedInstrumento) {
       newErrors.instrumento = 'Instrumento é obrigatório para músicos';
     }
+    // Validar classe apenas se o campo estiver visível (Organista)
+    // Cargos como Instrutora, Secretária da Música e Examinadora são oficializados automaticamente
     if (showClasse && !selectedClasse) {
       newErrors.classe = 'Classe é obrigatória';
     }
@@ -146,14 +157,15 @@ export const NewRegistrationModal: React.FC<NewRegistrationModalProps> = ({
 
     setLoading(true);
     try {
-      // Determinar classe automaticamente se necessário
-      let classeFinal = selectedClasse;
-      if (showClasse && !classeFinal) {
-        if (isOrganista) {
-          classeFinal = 'OFICIALIZADA'; // Padrão para organista
-        } else {
-          classeFinal = 'OFICIALIZADA'; // Padrão para outros cargos com classe
-        }
+      // 🚨 DETERMINAR CLASSE FINAL
+      let classeFinal: string | undefined = undefined;
+      
+      // Se for cargo que deve ser oficializado automaticamente, forçar "Oficializada"
+      if (isCargoOficializadaAutomatica) {
+        classeFinal = 'Oficializada';
+      } else if (showClasse) {
+        // Se o campo de classe está visível (Organista), usar o valor selecionado ou padrão
+        classeFinal = selectedClasse || 'Oficializada';
       }
 
       await onSave({
@@ -161,7 +173,7 @@ export const NewRegistrationModal: React.FC<NewRegistrationModalProps> = ({
         cidade: cidade.trim(),
         cargo: selectedCargo,
         instrumento: showInstrumento ? selectedInstrumento : undefined,
-        classe: showClasse ? classeFinal : undefined,
+        classe: classeFinal,
         nome: nome.trim(),
       });
 
@@ -288,9 +300,22 @@ export const NewRegistrationModal: React.FC<NewRegistrationModalProps> = ({
                     value={selectedCargo}
                     options={cargosOptions}
                     onSelect={(option) => {
-                      setSelectedCargo(String(option.value));
+                      const novoCargo = String(option.value);
+                      setSelectedCargo(novoCargo);
                       setSelectedInstrumento('');
-                      setSelectedClasse('');
+                      
+                      // 🚨 FORÇAR "Oficializada" automaticamente para cargos específicos
+                      const cargosOficializadaAutomatica = [
+                        'Instrutora',
+                        'Secretária da Música',
+                        'Examinadora'
+                      ];
+                      if (cargosOficializadaAutomatica.includes(novoCargo)) {
+                        setSelectedClasse('Oficializada');
+                      } else {
+                        setSelectedClasse('');
+                      }
+                      
                       if (errors.cargo) {
                         setErrors({ ...errors, cargo: '' });
                       }
@@ -658,6 +683,13 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     flex: 1,
+    minWidth: 0, // Permite que o botão encolha se necessário
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore - Propriedades CSS apenas para web
+      flexShrink: 1,
+      // @ts-ignore
+      minWidth: 'fit-content',
+    } : {}),
   },
 });
 
