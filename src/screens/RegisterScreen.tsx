@@ -202,36 +202,40 @@ export const RegisterScreen: React.FC = () => {
   useEffect(() => {
     if (isOnline && !syncing) {
       console.log('🌐 [AUTO-SYNC] Online detectado - verificando registros pendentes...');
-      // Verificar se há registros pendentes
-      supabaseDataService.getRegistrosPendentesFromLocal().then((registros) => {
-        if (registros.length > 0) {
-          console.log(`🔄 [AUTO-SYNC] ${registros.length} registro(s) pendente(s) encontrado(s) - iniciando sincronização automática...`);
-          // Aguardar um pouco para garantir que a conexão está estável
-          setTimeout(() => {
-            if (!syncing && isOnline) {
-              console.log('🚀 [AUTO-SYNC] Iniciando syncData()...');
-              syncData().catch(error => {
-                console.error('❌ [AUTO-SYNC] Erro na sincronização automática:', error);
-              });
-            } else {
-              console.log('⏸️ [AUTO-SYNC] Sync já em andamento ou offline, pulando...');
-            }
-          }, 2000);
-        } else {
-          console.log('📭 [AUTO-SYNC] Nenhum registro pendente para sincronizar');
-        }
-      }).catch(error => {
-        console.error('❌ [AUTO-SYNC] Erro ao verificar registros pendentes:', error);
-        // Tentar sincronizar mesmo assim após delay
-        setTimeout(() => {
-          if (!syncing && isOnline) {
-            console.log('🔄 [AUTO-SYNC] Tentando sincronizar mesmo com erro na verificação...');
-            syncData().catch(err => {
-              console.error('❌ [AUTO-SYNC] Erro na sincronização:', err);
-            });
+      
+      // Aguardar um pouco para garantir que a conexão está estável
+      const syncTimeout = setTimeout(async () => {
+        // Verificar novamente se ainda está online
+        try {
+          const netState = await NetInfo.fetch();
+          const isReallyOnline = netState.isConnected === true && netState.isInternetReachable === true;
+          
+          if (!isReallyOnline || syncing) {
+            console.log('⏸️ [AUTO-SYNC] Não está realmente online ou já sincronizando, pulando...');
+            return;
           }
-        }, 2000);
-      });
+          
+          // Verificar se há registros pendentes
+          const registros = await supabaseDataService.getRegistrosPendentesFromLocal();
+          
+          if (registros.length > 0) {
+            console.log(`🔄 [AUTO-SYNC] ${registros.length} registro(s) pendente(s) encontrado(s) - iniciando sincronização automática...`);
+            await syncData();
+          } else {
+            console.log('📭 [AUTO-SYNC] Nenhum registro pendente para sincronizar');
+          }
+        } catch (error) {
+          console.error('❌ [AUTO-SYNC] Erro ao verificar/sincronizar:', error);
+          // Tentar sincronizar mesmo assim
+          try {
+            await syncData();
+          } catch (syncError) {
+            console.error('❌ [AUTO-SYNC] Erro na sincronização:', syncError);
+          }
+        }
+      }, 3000); // Aumentado para 3 segundos para garantir conexão estável
+      
+      return () => clearTimeout(syncTimeout);
     } else {
       if (!isOnline) {
         console.log('📴 [AUTO-SYNC] Offline - não sincronizando');
@@ -470,75 +474,57 @@ export const RegisterScreen: React.FC = () => {
 
     setLoading(true);
 
-    // 🚨 CRÍTICO iOS: No iOS, SEMPRE salvar na fila primeiro (mais seguro)
-    // iPhone 8 até 17 - estratégia conservadora para garantir que registros nunca sejam perdidos
+    // 🚨 ESTRATÉGIA SIMPLIFICADA: Verificar status de conexão de forma mais confiável
     let isOfflineNow = false;
-    let forceSaveToQueue = false; // Flag para forçar salvamento na fila no iOS
     
-    if (Platform.OS === 'ios') {
-      // 🚨 iOS: Estratégia ULTRA-CONSERVADORA - sempre salvar na fila primeiro
-      // No iOS, a detecção de conexão é inconsistente, então melhor sempre salvar na fila
-      console.log('🍎 [iOS] Verificando status de conexão...');
+    // Verificar status de conexão de forma mais robusta
+    try {
+      // 1. Verificar hook primeiro (mais confiável)
+      const hookOffline = !isOnline;
       
-      // 1. Verificar NetInfo diretamente
+      // 2. Verificar NetInfo diretamente (mais preciso)
       let netInfoOffline = false;
-      let netInfoAvailable = false;
       try {
         const netState = await NetInfo.fetch();
-        netInfoAvailable = true;
         const isReallyOnline = netState.isConnected === true && netState.isInternetReachable === true;
         netInfoOffline = !isReallyOnline;
-        console.log('🍎 [iOS] NetInfo:', { isConnected: netState.isConnected, isInternetReachable: netState.isInternetReachable, isReallyOnline });
+        console.log(`📡 [${Platform.OS}] NetInfo:`, { 
+          isConnected: netState.isConnected, 
+          isInternetReachable: netState.isInternetReachable, 
+          isReallyOnline 
+        });
       } catch (netError) {
-        console.warn('🍎 [iOS] NetInfo falhou, assumindo offline:', netError);
-        netInfoOffline = true;
+        console.warn(`⚠️ [${Platform.OS}] NetInfo falhou:`, netError);
+        // Se NetInfo falhar, confiar no hook
+        netInfoOffline = hookOffline;
       }
-      
-      // 2. Verificar hook (useOnlineStatus)
-      const hookOffline = !isOnline;
-      console.log('🍎 [iOS] Hook isOnline:', isOnline);
       
       // 3. Verificar navigator.onLine (se disponível)
       const navigatorOffline = typeof navigator !== 'undefined' && 'onLine' in navigator && navigator.onLine === false;
-      console.log('🍎 [iOS] navigator.onLine:', typeof navigator !== 'undefined' && 'onLine' in navigator ? navigator.onLine : 'N/A');
       
-      // 🚨 ESTRATÉGIA CRÍTICA: No iOS, se QUALQUER verificação indicar offline OU se NetInfo não estiver disponível, FORÇAR salvamento na fila
-      // Mas se TODAS as verificações indicarem online claramente, permitir tentar enviar online primeiro
-      if (!netInfoAvailable) {
-        // Se NetInfo não está disponível, assumir offline para segurança
-        isOfflineNow = true;
-        forceSaveToQueue = true;
-        console.log('🍎 [iOS] FORÇANDO salvamento na fila (NetInfo indisponível)');
-      } else if (netInfoOffline || hookOffline || navigatorOffline) {
-        // Se qualquer verificação indicar offline, forçar salvamento na fila
-        isOfflineNow = true;
-        forceSaveToQueue = true;
-        console.log('🍎 [iOS] FORÇANDO salvamento na fila (offline detectado)');
+      // 🚨 ESTRATÉGIA: Se QUALQUER verificação indicar offline, considerar offline
+      // No iOS, ser mais conservador - se houver qualquer dúvida, salvar na fila
+      if (Platform.OS === 'ios') {
+        // iOS: Se NetInfo OU hook indicar offline, salvar na fila
+        isOfflineNow = netInfoOffline || hookOffline || navigatorOffline;
+        console.log(`🍎 [iOS] Status offline:`, { netInfoOffline, hookOffline, navigatorOffline, isOfflineNow });
+      } else if (Platform.OS === 'android') {
+        // Android: Se NetInfo OU hook indicar offline, salvar na fila
+        isOfflineNow = netInfoOffline || hookOffline || navigatorOffline;
+        console.log(`🤖 [Android] Status offline:`, { netInfoOffline, hookOffline, navigatorOffline, isOfflineNow });
       } else {
-        // Todas as verificações indicam online - permitir tentar enviar online primeiro
-        isOfflineNow = false;
-        forceSaveToQueue = false;
-        console.log('🍎 [iOS] Todas as verificações indicam online - tentando enviar online primeiro');
+        // Web: Usar navigator.onLine diretamente
+        isOfflineNow = typeof navigator !== 'undefined' ? !navigator.onLine : hookOffline;
+        console.log(`🌐 [Web] Status offline:`, { navigatorOffline, hookOffline, isOfflineNow });
       }
-    } else if (Platform.OS === 'android') {
-      // Android: Verificar hook primeiro
-      isOfflineNow = !isOnline;
-      
-      // Se navigator.onLine existir e for false, confiar nele
-      if (typeof navigator !== 'undefined' && 'onLine' in navigator && navigator.onLine === false) {
-        isOfflineNow = true;
-      }
-    } else if (Platform.OS === 'web') {
-      // Web: Usar navigator.onLine diretamente
-      isOfflineNow = typeof navigator !== 'undefined' ? !navigator.onLine : !isOnline;
-    } else {
-      // Outras plataformas: usar hook
-      isOfflineNow = !isOnline;
+    } catch (error) {
+      console.error('❌ Erro ao verificar status de conexão:', error);
+      // Em caso de erro, assumir offline para segurança
+      isOfflineNow = true;
     }
     
-    // Se estiver offline OU se for iOS com forceSaveToQueue, salvar IMEDIATAMENTE na fila
-    // 🚨 CRÍTICO iOS: No iOS, se forceSaveToQueue for true, SEMPRE salvar na fila (pular tentativa online)
-    if (isOfflineNow || forceSaveToQueue || (Platform.OS === 'ios' && !isOnline)) {
+    // Se estiver offline, salvar IMEDIATAMENTE na fila
+    if (isOfflineNow) {
       try {
         
         // Preparar registro para salvar na fila
