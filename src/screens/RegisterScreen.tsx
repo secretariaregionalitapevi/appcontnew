@@ -363,9 +363,7 @@ export const RegisterScreen: React.FC = () => {
       console.log('🔄 Pull-to-refresh: recarregando dados...');
       
       // Mostrar feedback visual imediato
-      if (Platform.OS !== 'web') {
-        showToast.info('Atualizando...', 'Recarregando dados');
-      }
+      showToast.info('Atualizando...', 'Recarregando dados');
       
       // Recarregar dados iniciais
       await loadInitialData();
@@ -379,16 +377,14 @@ export const RegisterScreen: React.FC = () => {
       await refreshCount();
       
       // Feedback de sucesso
-      if (Platform.OS !== 'web') {
-        showToast.success('Atualizado!', 'Dados recarregados com sucesso');
-      }
+      showToast.success('Atualizado!', 'Dados recarregados com sucesso');
     } catch (error) {
       console.error('❌ Erro ao atualizar:', error);
       showToast.error('Erro', 'Não foi possível atualizar os dados');
     } finally {
       setRefreshing(false);
     }
-  }, [refreshing, syncing, isOnline, syncData, refreshCount]);
+  }, [refreshing, syncing, isOnline, syncData, refreshCount, loadInitialData]);
 
   const loadPessoas = async () => {
     try {
@@ -720,7 +716,9 @@ export const RegisterScreen: React.FC = () => {
 
     try {
       // 🚨 iOS: Se forceSaveToQueue for true OU se estiver offline, salvar diretamente na fila sem tentar online
-      if (Platform.OS === 'ios' && (forceSaveToQueue || !isOnline || isOfflineNow)) {
+      // Mas NÃO forçar se todas as verificações indicarem online claramente
+      const shouldForceSaveToQueue = Platform.OS === 'ios' && (forceSaveToQueue || isOfflineNow);
+      if (shouldForceSaveToQueue) {
         console.log('🍎 [iOS] Salvando diretamente na fila (forceSaveToQueue:', forceSaveToQueue, 'isOnline:', isOnline, 'isOfflineNow:', isOfflineNow, ')');
         try {
           await supabaseDataService.saveRegistroToLocal({
