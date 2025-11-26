@@ -201,6 +201,7 @@ export const RegisterScreen: React.FC = () => {
   // Sincronização automática quando voltar online
   useEffect(() => {
     if (isOnline && !syncing) {
+      console.log('🌐 [AUTO-SYNC] Online detectado - verificando registros pendentes...');
       // Verificar se há registros pendentes
       supabaseDataService.getRegistrosPendentesFromLocal().then((registros) => {
         if (registros.length > 0) {
@@ -356,7 +357,10 @@ export const RegisterScreen: React.FC = () => {
 
   // Função para pull-to-refresh (otimizada com useCallback)
   const onRefresh = useCallback(async () => {
-    if (refreshing || syncing) return;
+    if (refreshing || syncing) {
+      console.log('⏳ Pull-to-refresh já em andamento, ignorando...');
+      return;
+    }
     
     try {
       setRefreshing(true);
@@ -365,19 +369,27 @@ export const RegisterScreen: React.FC = () => {
       // Mostrar feedback visual imediato
       showToast.info('Atualizando...', 'Recarregando dados');
       
-      // Recarregar dados iniciais
-      await loadInitialData();
-      
-      // Sincronizar se estiver online
+      // 1. Primeiro, sincronizar registros pendentes se estiver online
       if (isOnline) {
-        await syncData();
+        console.log('🌐 Online - sincronizando registros pendentes primeiro...');
+        try {
+          await syncData();
+        } catch (syncError) {
+          console.warn('⚠️ Erro na sincronização durante pull-to-refresh:', syncError);
+        }
       }
       
-      // Atualizar contador
+      // 2. Recarregar dados iniciais (comuns, cargos, instrumentos)
+      console.log('📚 Recarregando dados iniciais...');
+      await loadInitialData();
+      
+      // 3. Atualizar contador da fila
+      console.log('📊 Atualizando contador da fila...');
       await refreshCount();
       
       // Feedback de sucesso
       showToast.success('Atualizado!', 'Dados recarregados com sucesso');
+      console.log('✅ Pull-to-refresh concluído com sucesso');
     } catch (error) {
       console.error('❌ Erro ao atualizar:', error);
       showToast.error('Erro', 'Não foi possível atualizar os dados');
