@@ -744,7 +744,7 @@ export const RegisterScreen: React.FC = () => {
       // Mas NÃO forçar se todas as verificações indicarem online claramente
       const shouldForceSaveToQueue = Platform.OS === 'ios' && (forceSaveToQueue || isOfflineNow);
       if (shouldForceSaveToQueue) {
-        console.log('🍎 [iOS] Salvando diretamente na fila (forceSaveToQueue:', forceSaveToQueue, 'isOnline:', isOnline, 'isOfflineNow:', isOfflineNow, ')');
+        console.log('🍎 [iOS] Salvando diretamente na fila (isOnline:', isOnline, 'isOfflineNow:', isOfflineNow, ')');
         try {
           await supabaseDataService.saveRegistroToLocal({
             ...registro,
