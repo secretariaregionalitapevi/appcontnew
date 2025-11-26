@@ -719,14 +719,34 @@ export const RegisterScreen: React.FC = () => {
     };
 
     try {
-      // 🚨 iOS: Se forceSaveToQueue for true, salvar diretamente na fila sem tentar online
-      if (Platform.OS === 'ios' && forceSaveToQueue) {
-        console.log('🍎 [iOS] forceSaveToQueue=true - salvando diretamente na fila sem tentar online');
+      // 🚨 iOS: Se forceSaveToQueue for true OU se estiver offline, salvar diretamente na fila sem tentar online
+      if (Platform.OS === 'ios' && (forceSaveToQueue || !isOnline || isOfflineNow)) {
+        console.log('🍎 [iOS] Salvando diretamente na fila (forceSaveToQueue:', forceSaveToQueue, 'isOnline:', isOnline, 'isOfflineNow:', isOfflineNow, ')');
         try {
           await supabaseDataService.saveRegistroToLocal({
             ...registro,
             status_sincronizacao: 'pending',
           });
+          
+          // Verificar se foi realmente salvo
+          const registrosAposSalvar = await supabaseDataService.getRegistrosPendentesFromLocal();
+          const foiSalvo = registrosAposSalvar.some(r => 
+            r.pessoa_id === registro.pessoa_id &&
+            r.comum_id === registro.comum_id &&
+            r.cargo_id === registro.cargo_id &&
+            r.status_sincronizacao === 'pending'
+          );
+          
+          if (!foiSalvo) {
+            // Tentar novamente com novo ID
+            console.warn('⚠️ [iOS] Registro não encontrado após salvar, tentando novamente...');
+            const registroComNovoId = {
+              ...registro,
+              id: generateExternalUUID(),
+            };
+            await supabaseDataService.saveRegistroToLocal(registroComNovoId);
+          }
+          
           await refreshCount();
           showToast.success('Salvo offline', 'Será enviado quando voltar online');
           
@@ -741,9 +761,32 @@ export const RegisterScreen: React.FC = () => {
           return;
         } catch (saveError) {
           console.error('❌ [iOS] Erro ao salvar na fila (forceSaveToQueue):', saveError);
-          showToast.error('Erro', 'Erro ao salvar registro offline. Tente novamente.');
-          setLoading(false);
-          return;
+          
+          // Tentar novamente com novo ID
+          try {
+            const registroComNovoId = {
+              ...registro,
+              id: generateExternalUUID(),
+            };
+            await supabaseDataService.saveRegistroToLocal(registroComNovoId);
+            await refreshCount();
+            showToast.success('Salvo offline', 'Será enviado quando voltar online');
+            
+            // Limpar formulário
+            setSelectedComum('');
+            setSelectedCargo('');
+            setSelectedInstrumento('');
+            setSelectedPessoa('');
+            setIsNomeManual(false);
+            
+            setLoading(false);
+            return;
+          } catch (retryError) {
+            console.error('❌ [iOS] Erro mesmo na segunda tentativa:', retryError);
+            showToast.error('Erro', 'Erro ao salvar registro offline. Tente novamente.');
+            setLoading(false);
+            return;
+          }
         }
       }
       

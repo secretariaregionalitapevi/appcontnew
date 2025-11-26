@@ -62,8 +62,9 @@ export const OfflineBadge: React.FC<OfflineBadgeProps> = ({ count, syncing = fal
     return `${count} ${count === 1 ? 'pendente' : 'pendentes'}`;
   };
 
-  // Não exibir quando está offline e não há pendentes
-  if (!isOnline && count === 0 && !syncing) {
+  // Não exibir quando está offline e não há pendentes (apenas no web)
+  // No mobile, sempre exibir para mostrar status de conexão
+  if (Platform.OS === 'web' && !isOnline && count === 0 && !syncing) {
     return null;
   }
 
