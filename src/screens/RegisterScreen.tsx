@@ -162,9 +162,8 @@ export const RegisterScreen: React.FC = () => {
   useEffect(() => {
     setOnStatusChange((newStatus: boolean) => {
       if (!newStatus) {
-        // Conexão caiu
+        // Conexão caiu - apenas logar, sem exibir alerta
         console.log('📵 Conexão perdida - modo offline ativado');
-        showToast.warning('Modo offline', 'Registros serão salvos na fila');
       } else {
         // Conexão restaurada - SINCRONIZAR IMEDIATAMENTE
         console.log('🌐 Conexão restaurada - iniciando sincronização automática...');
