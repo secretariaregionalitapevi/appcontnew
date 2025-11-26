@@ -577,20 +577,73 @@ export const RegisterScreen: React.FC = () => {
           return;
         }
         
-        // Salvar apenas se não for duplicata
-        await supabaseDataService.saveRegistroToLocal(registro);
-        await refreshCount();
-        showToast.success('Salvo offline', 'Será enviado quando voltar online');
-        
-        // Limpar formulário
-        setSelectedComum('');
-        setSelectedCargo('');
-        setSelectedInstrumento('');
-        setSelectedPessoa('');
-        setIsNomeManual(false);
-        
-        setLoading(false);
-        return;
+        // 🚨 CRÍTICO iOS: Salvar na fila com tratamento robusto de erros
+        try {
+          await supabaseDataService.saveRegistroToLocal(registro);
+          
+          // Verificar se foi realmente salvo (especialmente importante no iOS)
+          const registrosAposSalvar = await supabaseDataService.getRegistrosPendentesFromLocal();
+          const foiSalvo = registrosAposSalvar.some(r => 
+            r.pessoa_id === registro.pessoa_id &&
+            r.comum_id === registro.comum_id &&
+            r.cargo_id === registro.cargo_id &&
+            r.status_sincronizacao === 'pending'
+          );
+          
+          if (!foiSalvo && Platform.OS === 'ios') {
+            // No iOS, se não foi salvo, tentar novamente com novo ID
+            console.warn('⚠️ [iOS] Registro não encontrado após salvar, tentando novamente...');
+            const registroComNovoId = {
+              ...registro,
+              id: generateExternalUUID(),
+            };
+            await supabaseDataService.saveRegistroToLocal(registroComNovoId);
+          }
+          
+          await refreshCount();
+          showToast.success('Salvo offline', 'Será enviado quando voltar online');
+          
+          // Limpar formulário
+          setSelectedComum('');
+          setSelectedCargo('');
+          setSelectedInstrumento('');
+          setSelectedPessoa('');
+          setIsNomeManual(false);
+          
+          setLoading(false);
+          return;
+        } catch (saveError) {
+          console.error('❌ [iOS] Erro ao salvar na fila:', saveError);
+          
+          // No iOS, tentar novamente com tratamento especial
+          if (Platform.OS === 'ios') {
+            try {
+              const registroComNovoId = {
+                ...registro,
+                id: generateExternalUUID(),
+              };
+              await supabaseDataService.saveRegistroToLocal(registroComNovoId);
+              await refreshCount();
+              showToast.success('Salvo offline', 'Será enviado quando voltar online');
+              
+              // Limpar formulário
+              setSelectedComum('');
+              setSelectedCargo('');
+              setSelectedInstrumento('');
+              setSelectedPessoa('');
+              setIsNomeManual(false);
+              
+              setLoading(false);
+              return;
+            } catch (retryError) {
+              console.error('❌ [iOS] Erro mesmo na segunda tentativa:', retryError);
+            }
+          }
+          
+          showToast.error('Erro', 'Erro ao salvar registro offline. Tente novamente.');
+          setLoading(false);
+          return;
+        }
       } catch (error) {
         console.error('❌ Erro crítico ao processar envio offline:', error);
         showToast.error('Erro', 'Erro ao salvar registro offline. Tente novamente.');
