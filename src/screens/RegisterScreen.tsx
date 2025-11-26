@@ -548,6 +548,14 @@ export const RegisterScreen: React.FC = () => {
         instrumento_id: selectedInstrumento,
       });
       
+      // 🚨 CRÍTICO: Garantir que modal está fechado antes de processar
+      if (newRegistrationModalVisible) {
+        console.log('🚨 [OFFLINE-SAVE] Fechando modal antes de salvar offline...');
+        setNewRegistrationModalVisible(false);
+        // Aguardar um pouco para garantir que o modal fechou
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+      
       try {
         // Preparar registro para salvar na fila
     const localEnsaio = await localStorageService.getLocalEnsaio();
