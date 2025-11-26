@@ -68,8 +68,8 @@ export const NewRegistrationModal: React.FC<NewRegistrationModalProps> = ({
   }, [visible]);
 
   // Verificar se precisa mostrar campo de instrumento
-  const cargoSelecionado = cargos.find(c => c.id === selectedCargo);
-  const cargoNome = cargoSelecionado?.nome || '';
+  // Como agora usamos o nome do cargo diretamente como valor, não precisamos buscar no array de cargos
+  const cargoNome = selectedCargo || '';
   const isMusico = cargoNome.toLowerCase().includes('músico');
   const isOrganista = cargoNome === 'Organista';
   const showInstrumento = isMusico && !isOrganista;
@@ -85,11 +85,25 @@ export const NewRegistrationModal: React.FC<NewRegistrationModalProps> = ({
     { id: 'Oficializada', label: 'Oficializada', value: 'Oficializada' },
   ];
 
-  // Opções de cargos
-  const cargosOptions = cargos.map(c => ({
-    id: c.id,
-    label: c.nome,
-    value: c.id,
+  // 🚨 CARGOS ESPECÍFICOS PARA O MODAL DE NOVO REGISTRO
+  // Usar lista completa de cargos do window ou lista padrão
+  const cargosCompletosModal = React.useMemo(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && (window as any).CARGOS_COMPLETOS_MODAL) {
+      return (window as any).CARGOS_COMPLETOS_MODAL;
+    }
+    return [
+      'Músico', 'Organista', 'Instrutor', 'Instrutora', 'Examinadora',
+      'Encarregado Local', 'Encarregado Regional', 'Secretário da Música', 'Secretária da Música',
+      'Irmandade', 'Ancião', 'Diácono', 'Cooperador do Ofício', 'Cooperador de Jovens',
+      'Porteiro (a)', 'Bombeiro (a)', 'Médico (a)', 'Enfermeiro (a)'
+    ];
+  }, []);
+
+  // Opções de cargos - usar lista completa do modal
+  const cargosOptions = cargosCompletosModal.map((cargoNome: string, index: number) => ({
+    id: `cargo_modal_${index}`,
+    label: cargoNome,
+    value: cargoNome, // Usar o nome do cargo como valor
   }));
 
   // Opções de instrumentos
