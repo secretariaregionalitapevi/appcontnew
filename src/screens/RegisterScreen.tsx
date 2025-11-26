@@ -446,14 +446,18 @@ export const RegisterScreen: React.FC = () => {
   };
 
   const handleSubmit = async () => {
+    console.log('🔘 [SUBMIT] Botão ENVIAR REGISTRO clicado');
+    
     // Validar campos obrigatórios (permitir nome manual para candidatos também)
     if (!selectedComum || !selectedCargo) {
+      console.warn('⚠️ [SUBMIT] Campos obrigatórios não preenchidos');
       Alert.alert('Erro', 'Preencha todos os campos obrigatórios');
       return;
     }
     
     // Validar nome: pode ser selecionado da lista OU digitado manualmente
     if (!selectedPessoa || selectedPessoa.trim() === '') {
+      console.warn('⚠️ [SUBMIT] Nome não selecionado');
       Alert.alert('Erro', 'Selecione um nome da lista ou digite manualmente');
       return;
     }
@@ -463,15 +467,18 @@ export const RegisterScreen: React.FC = () => {
     const cargoNome = cargos.find(c => c.id === selectedCargo)?.nome || '';
     const instrumentoObrigatorio = cargoNome === 'Músico'; // Organista removido
     if (instrumentoObrigatorio && !selectedInstrumento) {
+      console.warn('⚠️ [SUBMIT] Instrumento não selecionado para Músico');
       Alert.alert('Erro', 'Selecione o instrumento para Músico');
       return;
     }
 
     if (!user) {
+      console.error('❌ [SUBMIT] Usuário não autenticado');
       Alert.alert('Erro', 'Usuário não autenticado');
       return;
     }
 
+    console.log('✅ [SUBMIT] Validações passaram, iniciando processamento...');
     setLoading(true);
 
     // 🚨 ESTRATÉGIA SIMPLIFICADA: Verificar status de conexão de forma mais confiável
@@ -526,6 +533,12 @@ export const RegisterScreen: React.FC = () => {
     // 🚨 CRÍTICO: Se estiver offline, salvar IMEDIATAMENTE na fila (SEM tentar online)
     if (isOfflineNow) {
       console.log(`📴 [${Platform.OS}] Modo offline detectado - salvando diretamente na fila`);
+      console.log(`📊 [${Platform.OS}] Dados do registro:`, {
+        pessoa_id: isNomeManual ? `manual_${selectedPessoa}` : selectedPessoa,
+        comum_id: selectedComum,
+        cargo_id: selectedCargo,
+        instrumento_id: selectedInstrumento,
+      });
       
       try {
         // Preparar registro para salvar na fila
@@ -604,10 +617,21 @@ export const RegisterScreen: React.FC = () => {
         
         // 🚨 CRÍTICO: Salvar na fila com tratamento robusto de erros
         console.log(`💾 [${Platform.OS}] Salvando registro na fila offline...`);
-        await supabaseDataService.saveRegistroToLocal(registro);
+        console.log(`📋 [${Platform.OS}] Dados completos do registro:`, JSON.stringify(registro, null, 2));
+        
+        try {
+          await supabaseDataService.saveRegistroToLocal(registro);
+          console.log(`✅ [${Platform.OS}] saveRegistroToLocal executado com sucesso`);
+        } catch (saveError) {
+          console.error(`❌ [${Platform.OS}] Erro ao chamar saveRegistroToLocal:`, saveError);
+          throw saveError; // Re-lançar para ser tratado no catch externo
+        }
         
         // Verificar se foi realmente salvo (especialmente importante no iOS/Android)
+        console.log(`🔍 [${Platform.OS}] Verificando se registro foi salvo...`);
         const registrosAposSalvar = await supabaseDataService.getRegistrosPendentesFromLocal();
+        console.log(`📊 [${Platform.OS}] Total de registros na fila após salvar:`, registrosAposSalvar.length);
+        
         const foiSalvo = registrosAposSalvar.some(r => 
           r.pessoa_id === registro.pessoa_id &&
           r.comum_id === registro.comum_id &&
@@ -615,18 +639,30 @@ export const RegisterScreen: React.FC = () => {
           r.status_sincronizacao === 'pending'
         );
         
+        console.log(`✅ [${Platform.OS}] Registro foi salvo?`, foiSalvo);
+        
         if (!foiSalvo) {
           // Se não foi salvo, tentar novamente com novo ID
-          console.warn(`⚠️ [${Platform.OS}] Registro não encontrado após salvar, tentando novamente...`);
+          console.warn(`⚠️ [${Platform.OS}] Registro não encontrado após salvar, tentando novamente com novo ID...`);
           const registroComNovoId = {
             ...registro,
             id: generateExternalUUID(),
           };
-          await supabaseDataService.saveRegistroToLocal(registroComNovoId);
+          try {
+            await supabaseDataService.saveRegistroToLocal(registroComNovoId);
+            console.log(`✅ [${Platform.OS}] Registro salvo com novo ID`);
+          } catch (retryError) {
+            console.error(`❌ [${Platform.OS}] Erro ao salvar com novo ID:`, retryError);
+            throw retryError;
+          }
         }
         
+        console.log(`🔄 [${Platform.OS}] Atualizando contador da fila...`);
         await refreshCount();
+        console.log(`✅ [${Platform.OS}] Contador atualizado`);
+        
         showToast.success('Salvo offline', 'Será enviado quando voltar online');
+        console.log(`✅ [${Platform.OS}] Toast de sucesso exibido`);
         
         // Limpar formulário
         setSelectedComum('');
@@ -635,6 +671,7 @@ export const RegisterScreen: React.FC = () => {
         setSelectedPessoa('');
         setIsNomeManual(false);
         
+        console.log(`✅ [${Platform.OS}] Formulário limpo, finalizando...`);
         setLoading(false);
         return;
       } catch (error) {
