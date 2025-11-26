@@ -213,8 +213,8 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.md,
     backgroundColor: theme.colors.surface,
     paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    minHeight: 48,
+    paddingVertical: Platform.OS === 'web' ? theme.spacing.sm : theme.spacing.md, // Mais padding no mobile
+    minHeight: Platform.OS === 'web' ? 48 : 52, // Aumentado no mobile
   },
   selectButtonInline: {
     borderWidth: 0,

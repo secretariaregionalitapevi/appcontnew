@@ -33,7 +33,8 @@ export const PrimaryButton: React.FC<PrimaryButtonProps> = ({
       style={[styles.button, (disabled || loading) && styles.buttonDisabled, style]}
       onPress={onPress}
       disabled={disabled || loading}
-      activeOpacity={Platform.OS === 'web' ? 0.85 : 0.7} // Feedback mais visível no mobile
+      activeOpacity={Platform.OS === 'web' ? 0.85 : 0.6} // Feedback mais visível no mobile (reduzido de 0.7 para 0.6)
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} // Área de toque expandida
     >
       {loading ? (
         <ActivityIndicator color={theme.colors.surface} size="small" />
@@ -56,11 +57,12 @@ const styles = StyleSheet.create({
   button: {
     backgroundColor: theme.colors.primary,
     borderRadius: theme.borderRadius.md,
-    paddingVertical: 8,
-    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: 12, // Aumentado de 8 para melhor área de toque
+    paddingHorizontal: theme.spacing.xl, // Aumentado de lg para xl
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 40,
+    minHeight: 48, // Padrão mínimo 48px (Apple/Google recomendam 44px mínimo)
+    minWidth: 120, // Largura mínima para melhor área de toque
     alignSelf: 'center',
     ...(Platform.OS === 'web'
       ? {
@@ -68,6 +70,8 @@ const styles = StyleSheet.create({
           boxShadow: '0 2px 8px rgba(3, 61, 96, 0.3)',
           transition: 'all 0.2s ease',
           cursor: 'pointer',
+          minHeight: 44, // Web pode ser um pouco menor
+          paddingVertical: 10,
         }
       : {
           shadowColor: theme.colors.primary,
@@ -75,8 +79,8 @@ const styles = StyleSheet.create({
           shadowOpacity: 0.4,
           shadowRadius: 6,
           elevation: 4, // Elevação maior no mobile para melhor feedback visual
-          minHeight: 48, // Altura mínima maior no mobile para melhor toque
-          paddingVertical: 12, // Mais padding vertical no mobile
+          minHeight: 52, // Aumentado para 52px no mobile (melhor que 48px)
+          paddingVertical: 14, // Mais padding vertical no mobile
         }),
   },
   buttonDisabled: {
@@ -104,9 +108,10 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: theme.colors.surface,
-    fontSize: 14,
+    fontSize: Platform.OS === 'web' ? 14 : 15, // Ligeiramente maior no mobile
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+    lineHeight: Platform.OS === 'web' ? 20 : 22, // Melhor espaçamento
   },
 });

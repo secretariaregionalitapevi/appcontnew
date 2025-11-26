@@ -237,10 +237,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: theme.spacing.sm,
+    paddingVertical: theme.spacing.md, // Aumentado de sm para md
     paddingLeft: theme.spacing.md,
-    paddingRight: theme.spacing.sm,
-    minHeight: 48,
+    paddingRight: theme.spacing.md, // Aumentado de sm para md
+    minHeight: 52, // Aumentado de 48 para 52px (melhor área de toque)
     flex: 1,
     borderRadius: theme.borderRadius.md,
   },
@@ -283,9 +283,9 @@ const styles = StyleSheet.create({
   optionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 14, // Aumentado de 12 para 14px
     paddingHorizontal: theme.spacing.md,
-    minHeight: 48,
+    minHeight: 52, // Aumentado de 48 para 52px (melhor área de toque)
     backgroundColor: theme.colors.surface,
   },
   optionItemSelected: {

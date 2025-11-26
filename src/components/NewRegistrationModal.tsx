@@ -631,13 +631,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: theme.spacing.md,
+    paddingVertical: Platform.OS === 'web' ? theme.spacing.md : theme.spacing.lg, // Mais padding no mobile
     paddingHorizontal: theme.spacing.lg,
     borderRadius: theme.borderRadius.md,
     backgroundColor: theme.colors.surface,
     borderWidth: 1.5,
     borderColor: '#dee2e6',
-    minHeight: 40,
+    minHeight: Platform.OS === 'web' ? 44 : 52, // Aumentado
     flex: 1,
   },
   cancelButtonText: {

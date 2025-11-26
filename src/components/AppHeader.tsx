@@ -318,11 +318,14 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   actionBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 4,
+    width: 44, // Aumentado de 32 para 44px (mínimo recomendado)
+    height: 44, // Aumentado de 32 para 44px (mínimo recomendado)
+    borderRadius: 8, // Aumentado para melhor visual
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
+    minWidth: 44, // Garantir área mínima
+    minHeight: 44, // Garantir área mínima
+    padding: 8, // Padding interno para melhor área de toque
   },
 });

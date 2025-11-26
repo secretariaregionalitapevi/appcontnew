@@ -581,10 +581,10 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.md,
     backgroundColor: '#ffffff',
     paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
+    paddingVertical: Platform.OS === 'web' ? theme.spacing.sm : theme.spacing.md, // Mais padding no mobile
     fontSize: theme.fontSize.md,
     color: theme.colors.text,
-    minHeight: 48,
+    minHeight: Platform.OS === 'web' ? 48 : 52, // Aumentado no mobile
     ...(Platform.OS === 'web' ? {
       backgroundColor: '#ffffff',
       opacity: 1,
@@ -659,10 +659,10 @@ const styles = StyleSheet.create({
   item: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: theme.spacing.md,
+    padding: Platform.OS === 'web' ? theme.spacing.md : theme.spacing.lg, // Mais padding no mobile
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
-    minHeight: 44,
+    minHeight: Platform.OS === 'web' ? 48 : 52, // Aumentado no mobile
     backgroundColor: '#ffffff',
     ...(Platform.OS === 'web' ? {
       backgroundColor: '#ffffff',

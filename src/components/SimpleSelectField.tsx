@@ -485,10 +485,10 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.md,
     backgroundColor: '#ffffff',
     paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.md,
+    paddingVertical: Platform.OS === 'web' ? theme.spacing.md : theme.spacing.lg, // Mais padding no mobile
     fontSize: theme.fontSize.md,
     color: theme.colors.text,
-    minHeight: 48,
+    minHeight: Platform.OS === 'web' ? 48 : 52, // Aumentado no mobile
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -594,11 +594,11 @@ const styles = StyleSheet.create({
     } : {}),
   },
   item: {
-    paddingVertical: theme.spacing.md,
+    paddingVertical: Platform.OS === 'web' ? theme.spacing.md : theme.spacing.lg, // Mais padding no mobile
     paddingHorizontal: theme.spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
-    minHeight: 44,
+    minHeight: Platform.OS === 'web' ? 48 : 52, // Aumentado no mobile
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

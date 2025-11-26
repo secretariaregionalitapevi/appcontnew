@@ -270,13 +270,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: theme.spacing.md,
+    paddingVertical: Platform.OS === 'web' ? 12 : 14, // Aumentado
+    paddingHorizontal: theme.spacing.lg, // Aumentado de md para lg
     borderRadius: 8,
     backgroundColor: '#ffffff',
     borderWidth: 1.5,
     borderColor: '#dee2e6',
-    minHeight: 40,
+    minHeight: Platform.OS === 'web' ? 44 : 52, // Aumentado
     ...(Platform.OS === 'web'
       ? {
           transition: 'all 0.2s ease',
@@ -299,11 +299,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: theme.spacing.md,
+    paddingVertical: Platform.OS === 'web' ? 12 : 14, // Aumentado
+    paddingHorizontal: theme.spacing.lg, // Aumentado de md para lg
     borderRadius: 8,
     backgroundColor: '#ff9800',
-    minHeight: 40,
+    minHeight: Platform.OS === 'web' ? 44 : 52, // Aumentado
     ...(Platform.OS === 'web'
       ? {
           boxShadow: '0 2px 8px rgba(255, 152, 0, 0.25)',

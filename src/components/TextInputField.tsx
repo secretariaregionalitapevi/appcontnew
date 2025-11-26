@@ -69,7 +69,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.md,
     backgroundColor: theme.colors.surface,
     paddingHorizontal: theme.spacing.md,
-    minHeight: 48,
+    minHeight: Platform.OS === 'web' ? 48 : 52, // Aumentado no mobile
   },
   inputContainerError: {
     borderColor: theme.colors.error,
@@ -97,8 +97,8 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: theme.fontSize.md,
     color: theme.colors.text,
-    paddingVertical: theme.spacing.sm,
+    paddingVertical: Platform.OS === 'web' ? theme.spacing.sm : theme.spacing.md, // Mais padding no mobile
     paddingLeft: theme.spacing.md,
-    minHeight: 48,
+    minHeight: Platform.OS === 'web' ? 48 : 52, // Aumentado no mobile
   },
 });
