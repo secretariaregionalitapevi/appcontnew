@@ -1349,7 +1349,7 @@ export const RegisterScreen: React.FC = () => {
           style={Platform.OS === 'web' 
             ? { 
                 position: 'relative' as const, 
-                overflow: 'auto' as const,
+                overflow: 'scroll' as const,
                 zIndex: 1,
                 // @ts-ignore
                 WebkitOverflowScrolling: 'touch',
