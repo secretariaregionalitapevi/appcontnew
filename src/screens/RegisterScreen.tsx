@@ -205,19 +205,39 @@ export const RegisterScreen: React.FC = () => {
       // Verificar se há registros pendentes
       supabaseDataService.getRegistrosPendentesFromLocal().then((registros) => {
         if (registros.length > 0) {
-          console.log(`🔄 [AUTO SYNC] ${registros.length} registro(s) pendente(s) - iniciando sincronização automática...`);
+          console.log(`🔄 [AUTO-SYNC] ${registros.length} registro(s) pendente(s) encontrado(s) - iniciando sincronização automática...`);
           // Aguardar um pouco para garantir que a conexão está estável
           setTimeout(() => {
             if (!syncing && isOnline) {
+              console.log('🚀 [AUTO-SYNC] Iniciando syncData()...');
               syncData().catch(error => {
-                console.error('❌ Erro na sincronização automática:', error);
+                console.error('❌ [AUTO-SYNC] Erro na sincronização automática:', error);
               });
+            } else {
+              console.log('⏸️ [AUTO-SYNC] Sync já em andamento ou offline, pulando...');
             }
           }, 2000);
+        } else {
+          console.log('📭 [AUTO-SYNC] Nenhum registro pendente para sincronizar');
         }
       }).catch(error => {
-        console.error('❌ Erro ao verificar registros pendentes:', error);
+        console.error('❌ [AUTO-SYNC] Erro ao verificar registros pendentes:', error);
+        // Tentar sincronizar mesmo assim após delay
+        setTimeout(() => {
+          if (!syncing && isOnline) {
+            console.log('🔄 [AUTO-SYNC] Tentando sincronizar mesmo com erro na verificação...');
+            syncData().catch(err => {
+              console.error('❌ [AUTO-SYNC] Erro na sincronização:', err);
+            });
+          }
+        }, 2000);
       });
+    } else {
+      if (!isOnline) {
+        console.log('📴 [AUTO-SYNC] Offline - não sincronizando');
+      } else if (syncing) {
+        console.log('⏳ [AUTO-SYNC] Já sincronizando - aguardando...');
+      }
     }
   }, [isOnline, syncing, syncData]);
 
