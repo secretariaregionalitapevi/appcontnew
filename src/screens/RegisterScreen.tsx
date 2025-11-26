@@ -740,9 +740,9 @@ export const RegisterScreen: React.FC = () => {
     };
 
     try {
-      // 🚨 iOS: Se forceSaveToQueue for true OU se estiver offline, salvar diretamente na fila sem tentar online
-      // Mas NÃO forçar se todas as verificações indicarem online claramente
-      const shouldForceSaveToQueue = Platform.OS === 'ios' && (forceSaveToQueue || isOfflineNow);
+      // 🚨 iOS: Se estiver offline, salvar diretamente na fila sem tentar online
+      // No iOS, ser mais conservador - se houver qualquer dúvida sobre conexão, salvar na fila
+      const shouldForceSaveToQueue = Platform.OS === 'ios' && isOfflineNow;
       if (shouldForceSaveToQueue) {
         console.log('🍎 [iOS] Salvando diretamente na fila (isOnline:', isOnline, 'isOfflineNow:', isOfflineNow, ')');
         try {
@@ -815,10 +815,10 @@ export const RegisterScreen: React.FC = () => {
       
       console.log('🚀 Iniciando envio de registro...', {
         isOnline,
+        isOfflineNow,
         pessoa_id: registro.pessoa_id,
         comum_id: registro.comum_id,
         cargo_id: registro.cargo_id,
-        forceSaveToQueue,
       });
       
       const result = await (offlineSyncService as any).createRegistro(registro);
