@@ -11,6 +11,18 @@ interface OfflineBadgeProps {
 
 export const OfflineBadge: React.FC<OfflineBadgeProps> = ({ count, syncing = false }) => {
   const { isOnline } = useOnlineStatus();
+  
+  // Debug: log do estado do badge
+  React.useEffect(() => {
+    console.log('🏷️ [Badge] Estado:', {
+      platform: Platform.OS,
+      isOnline,
+      count,
+      syncing,
+      shouldShow: Platform.OS !== 'web' || isOnline || count > 0 || syncing,
+    });
+  }, [isOnline, count, syncing]);
+  
   const getBadgeStyle = () => {
     if (syncing) {
       return [styles.badge, styles.badgeSyncing];
