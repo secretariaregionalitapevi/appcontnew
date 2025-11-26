@@ -471,15 +471,22 @@ export const RegisterScreen: React.FC = () => {
       console.log('🍎 [iOS] navigator.onLine:', typeof navigator !== 'undefined' && 'onLine' in navigator ? navigator.onLine : 'N/A');
       
       // 🚨 ESTRATÉGIA CRÍTICA: No iOS, se QUALQUER verificação indicar offline OU se NetInfo não estiver disponível, FORÇAR salvamento na fila
-      // Isso garante que registros nunca sejam perdidos mesmo com detecção inconsistente
-      if (!netInfoAvailable || netInfoOffline || hookOffline || navigatorOffline) {
+      // Mas se TODAS as verificações indicarem online claramente, permitir tentar enviar online primeiro
+      if (!netInfoAvailable) {
+        // Se NetInfo não está disponível, assumir offline para segurança
         isOfflineNow = true;
-        forceSaveToQueue = true; // Forçar salvamento na fila
-        console.log('🍎 [iOS] FORÇANDO salvamento na fila (offline detectado ou NetInfo indisponível)');
+        forceSaveToQueue = true;
+        console.log('🍎 [iOS] FORÇANDO salvamento na fila (NetInfo indisponível)');
+      } else if (netInfoOffline || hookOffline || navigatorOffline) {
+        // Se qualquer verificação indicar offline, forçar salvamento na fila
+        isOfflineNow = true;
+        forceSaveToQueue = true;
+        console.log('🍎 [iOS] FORÇANDO salvamento na fila (offline detectado)');
       } else {
-        // Mesmo se todas as verificações indicarem online, no iOS ainda pode haver problemas
-        // Então vamos tentar enviar online, mas se falhar, salvar na fila
-        console.log('🍎 [iOS] Todas as verificações indicam online, mas vamos tentar enviar online primeiro');
+        // Todas as verificações indicam online - permitir tentar enviar online primeiro
+        isOfflineNow = false;
+        forceSaveToQueue = false;
+        console.log('🍎 [iOS] Todas as verificações indicam online - tentando enviar online primeiro');
       }
     } else if (Platform.OS === 'android') {
       // Android: Verificar hook primeiro
