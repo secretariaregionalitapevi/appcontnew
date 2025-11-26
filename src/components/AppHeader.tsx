@@ -193,7 +193,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                 <FontAwesome5 name="cog" size={14} color="#a7b1c2" />
               </TouchableOpacity>
             )}
-            <TouchableOpacity style={styles.actionBtn} onPress={handleLogout} activeOpacity={0.7}>
+            <TouchableOpacity style={styles.actionBtn} onPress={handleLogout} activeOpacity={0.6} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <FontAwesome5 name="sign-out-alt" size={14} color="#a7b1c2" />
             </TouchableOpacity>
           </View>

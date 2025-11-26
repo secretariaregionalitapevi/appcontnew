@@ -132,12 +132,12 @@ export const DuplicateModal: React.FC<DuplicateModalProps> = ({
 
           {/* Botões */}
           <View style={styles.buttonsContainer}>
-            <TouchableOpacity style={styles.cancelButton} onPress={onCancel} activeOpacity={0.7}>
+            <TouchableOpacity style={styles.cancelButton} onPress={onCancel} activeOpacity={0.6} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <FontAwesome5 name="times" size={14} color="#666" />
               <Text style={styles.cancelButtonText}>Cancelar</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.confirmButton} onPress={onConfirm} activeOpacity={0.8}>
+            <TouchableOpacity style={styles.confirmButton} onPress={onConfirm} activeOpacity={0.6} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <FontAwesome5 name="check" size={14} color="#fff" />
               <Text style={styles.confirmButtonText}>Cadastrar Mesmo Assim</Text>
             </TouchableOpacity>
