@@ -74,14 +74,9 @@ export const OfflineBadge: React.FC<OfflineBadgeProps> = ({ count, syncing = fal
     return `${count} ${count === 1 ? 'pendente' : 'pendentes'}`;
   };
 
-  // No mobile (iOS/Android), SEMPRE exibir para mostrar status de conexão e fila
-  // Apenas no web, ocultar quando offline e não há pendentes
-  if (Platform.OS === 'web' && !isOnline && count === 0 && !syncing) {
-    return null;
-  }
-  
-  // No mobile, SEMPRE retornar o badge (nunca ocultar, mesmo offline e vazio)
-  // Isso garante que o usuário sempre veja o status de conexão
+  // 🚨 CRÍTICO: Badge SEMPRE deve aparecer, especialmente no mobile
+  // Esta é a função mais importante do app - mostrar status de conexão e fila
+  // NUNCA ocultar, mesmo offline e vazio
 
   return (
     <View style={styles.wrapper}>
