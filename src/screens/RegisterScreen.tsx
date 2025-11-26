@@ -26,6 +26,7 @@ import { NewRegistrationModal } from '../components/NewRegistrationModal';
 import { theme } from '../theme';
 import { supabaseDataService } from '../services/supabaseDataService';
 import { offlineSyncService } from '../services/offlineSyncService';
+import { googleSheetsService } from '../services/googleSheetsService';
 import { useOfflineQueue } from '../hooks/useOfflineQueue';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { Comum, Cargo, Instrumento, Pessoa, RegistroPresenca } from '../types/models';
