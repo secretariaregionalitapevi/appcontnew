@@ -620,8 +620,6 @@ const styles = StyleSheet.create({
       boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)',
       zIndex: 999999,
       // @ts-ignore
-      background: '#ffffff',
-      // @ts-ignore
       backgroundImage: 'none',
       // @ts-ignore
       willChange: 'transform',
@@ -634,8 +632,6 @@ const styles = StyleSheet.create({
     ...(Platform.OS === 'web' ? {
       backgroundColor: '#ffffff',
       opacity: 1,
-      // @ts-ignore
-      background: '#ffffff',
       // @ts-ignore
       backgroundImage: 'none',
       // @ts-ignore
@@ -666,8 +662,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     ...(Platform.OS === 'web' ? {
       backgroundColor: '#ffffff',
-      // @ts-ignore
-      background: '#ffffff',
       opacity: 1,
       // @ts-ignore
       position: 'relative',
@@ -763,8 +757,6 @@ const styles = StyleSheet.create({
       visibility: 'visible',
       opacity: 1,
       // @ts-ignore
-      background: '#ffffff',
-      // @ts-ignore
       backgroundImage: 'none',
       // @ts-ignore
       isolation: 'isolate',
@@ -779,8 +771,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     ...(Platform.OS === 'web' ? {
       backgroundColor: '#ffffff',
-      // @ts-ignore
-      background: '#ffffff',
     } : {}),
   },
   modalContainer: {

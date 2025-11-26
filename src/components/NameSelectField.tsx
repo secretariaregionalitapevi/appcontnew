@@ -525,7 +525,6 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
                     // @ts-ignore
                     backgroundColor: '#ffffff',
                     // @ts-ignore
-                    background: '#ffffff',
                     // @ts-ignore
                     opacity: 1,
                   } : {},
@@ -676,7 +675,6 @@ const styles = StyleSheet.create({
     ...(Platform.OS === 'web' ? {
       backgroundColor: '#ffffff',
       // @ts-ignore
-      background: '#ffffff',
       opacity: 1,
     } : {}),
   },
@@ -753,7 +751,6 @@ const styles = StyleSheet.create({
       visibility: 'visible',
       opacity: 1,
       // @ts-ignore
-      background: '#ffffff',
       // @ts-ignore
       backgroundImage: 'none',
       // @ts-ignore
@@ -772,7 +769,6 @@ const styles = StyleSheet.create({
     ...(Platform.OS === 'web' ? {
       backgroundColor: '#ffffff',
       // @ts-ignore
-      background: '#ffffff',
       // @ts-ignore
       zIndex: 999999,
     } : {}),
@@ -790,7 +786,6 @@ const styles = StyleSheet.create({
     ...(Platform.OS === 'web' ? {
       backgroundColor: '#ffffff',
       // @ts-ignore
-      background: '#ffffff',
       opacity: 1,
       // @ts-ignore
       position: 'relative',
