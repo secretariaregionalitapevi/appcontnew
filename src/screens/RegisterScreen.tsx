@@ -1349,7 +1349,7 @@ export const RegisterScreen: React.FC = () => {
           nestedScrollEnabled={true}
           showsVerticalScrollIndicator={true}
           scrollEnabled={true}
-          bounces={Platform.OS === 'ios'}
+          bounces={Platform.OS === 'ios' || Platform.OS === 'android'}
           alwaysBounceVertical={Platform.OS === 'ios'}
           scrollEventThrottle={16}
           removeClippedSubviews={Platform.OS === 'android'}
@@ -1366,17 +1366,19 @@ export const RegisterScreen: React.FC = () => {
                 backgroundColor: theme.colors.background,
               }}
           refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={[theme.colors.primary]}
-              tintColor={theme.colors.primary}
-              progressViewOffset={Platform.OS === 'android' ? 20 : 0}
-              title="Puxe para atualizar"
-              titleColor={theme.colors.textSecondary}
-              progressBackgroundColor={theme.colors.surface}
-              enabled={true}
-            />
+            Platform.OS !== 'web' ? (
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={[theme.colors.primary]}
+                tintColor={theme.colors.primary}
+                progressViewOffset={Platform.OS === 'android' ? 20 : 0}
+                title="Puxe para atualizar"
+                titleColor={theme.colors.textSecondary}
+                progressBackgroundColor={theme.colors.surface}
+                enabled={true}
+              />
+            ) : undefined
           }
         >
           <View style={styles.card}>
