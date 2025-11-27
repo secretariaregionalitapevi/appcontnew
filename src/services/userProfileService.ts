@@ -4,11 +4,14 @@ import { Usuario } from '../types/models';
 export interface UserProfile {
   id: string;
   email: string;
-  nome?: string;
-  name?: string; // Campo alternativo (alguns schemas usam 'name' em vez de 'nome')
+  name?: string; // Campo principal na tabela profiles
+  first_name?: string; // Primeiro nome
+  last_name?: string; // Último nome
   role?: string;
   created_at?: string;
   updated_at?: string;
+  // Campos legados (para compatibilidade)
+  nome?: string;
 }
 
 export const userProfileService = {
@@ -31,52 +34,28 @@ export const userProfileService = {
     }
 
     try {
-      // Tentar atualizar com 'nome' primeiro, se falhar tenta com 'name'
-      let data, error;
+      // Usar 'name' como campo principal na tabela profiles
+      const result = await supabase
+        .from('profiles')
+        .upsert(
+          {
+            id: userId,
+            email,
+            name: nome || null,
+            role: role || 'user',
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'id' }
+        )
+        .select()
+        .single();
 
-      try {
-        const result = await supabase
-          .from('profiles')
-          .upsert(
-            {
-              id: userId,
-              email,
-              nome: nome || null,
-              role: role || 'user',
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: 'id' }
-          )
-          .select()
-          .single();
-        data = result.data;
-        error = result.error;
-      } catch (e) {
-        // Se falhar, tentar com 'name' (campo alternativo)
-        const result = await supabase
-          .from('profiles')
-          .upsert(
-            {
-              id: userId,
-              email,
-              name: nome || null,
-              role: role || 'user',
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: 'id' }
-          )
-          .select()
-          .single();
-        data = result.data;
-        error = result.error;
+      if (result.error) {
+        console.error('Erro ao criar/atualizar perfil:', result.error);
+        return { profile: null, error: result.error };
       }
 
-      if (error) {
-        console.error('Erro ao criar/atualizar perfil:', error);
-        return { profile: null, error };
-      }
-
-      return { profile: data, error: null };
+      return { profile: result.data, error: null };
     } catch (error) {
       console.error('Erro ao criar/atualizar perfil:', error);
       return { profile: null, error: error as Error };
@@ -97,47 +76,43 @@ export const userProfileService = {
     }
 
     try {
-      // Buscar apenas campos que existem (nome, não name)
-      // Tentar primeiro com 'nome', se falhar tenta sem especificar campos
-      let data, error;
+      // 🚨 CORREÇÃO: Buscar campos corretos da tabela profiles (name, first_name, last_name, role)
+      const result = await supabase
+        .from('profiles')
+        .select('id, email, name, first_name, last_name, role, created_at, updated_at')
+        .eq('id', userId)
+        .single();
 
-      try {
-        // Primeira tentativa: buscar com 'nome' (campo correto)
-        const result = await supabase
-          .from('profiles')
-          .select('id, email, nome, role, created_at, updated_at')
-          .eq('id', userId)
-          .single();
-        data = result.data;
-        error = result.error;
-      } catch (e) {
-        // Se falhar, tentar buscar todos os campos disponíveis
-        const result = await supabase.from('profiles').select('*').eq('id', userId).single();
-        data = result.data;
-        error = result.error;
-      }
-
-      if (error) {
+      if (result.error) {
         // Se o perfil não existe, não é um erro crítico
-        if (error.code === 'PGRST116') {
+        if (result.error.code === 'PGRST116') {
           console.warn('⚠️ Perfil não encontrado para usuário:', userId);
           return { profile: null, error: null };
         }
-        console.error('❌ Erro ao buscar perfil:', error);
-        return { profile: null, error };
+        console.error('❌ Erro ao buscar perfil:', result.error);
+        return { profile: null, error: result.error };
       }
 
-      if (data) {
+      if (result.data) {
+        // Combinar first_name e last_name se disponíveis
+        let fullName = result.data.name;
+        if (!fullName && result.data.first_name) {
+          fullName = result.data.last_name 
+            ? `${result.data.first_name} ${result.data.last_name}`.trim()
+            : result.data.first_name;
+        }
+
         console.log('✅ Perfil encontrado:', {
-          id: data.id,
-          email: data.email,
-          nome: data.nome || data.name || 'não definido',
-          role: data.role || 'não definido',
-          roleType: typeof data.role,
+          id: result.data.id,
+          email: result.data.email,
+          name: fullName || 'não definido',
+          first_name: result.data.first_name,
+          last_name: result.data.last_name,
+          role: result.data.role || 'não definido',
         });
       }
 
-      return { profile: data, error: null };
+      return { profile: result.data, error: null };
     } catch (error) {
       console.error('❌ Erro ao buscar perfil:', error);
       return { profile: null, error: error as Error };
@@ -146,12 +121,26 @@ export const userProfileService = {
 
   /**
    * Converter UserProfile para Usuario
+   * Combina first_name e last_name se disponíveis, senão usa name
    */
   profileToUsuario(profile: UserProfile | null): Usuario | null {
     if (!profile) return null;
 
-    // Priorizar 'nome', depois 'name', depois undefined
-    const nome = profile.nome || profile.name || undefined;
+    // 🚨 CORREÇÃO: Combinar first_name e last_name se disponíveis
+    let nome: string | undefined;
+    
+    if (profile.first_name) {
+      // Se tem first_name, combinar com last_name se disponível
+      nome = profile.last_name 
+        ? `${profile.first_name} ${profile.last_name}`.trim()
+        : profile.first_name;
+    } else if (profile.name) {
+      // Se não tem first_name, usar name
+      nome = profile.name;
+    } else if (profile.nome) {
+      // Fallback para campo legado
+      nome = profile.nome;
+    }
 
     // Normalizar role: converter para lowercase e garantir que seja string
     let role = profile.role;
@@ -164,6 +153,9 @@ export const userProfileService = {
     console.log('🔄 Convertendo perfil para Usuario:', {
       id: profile.id,
       email: profile.email,
+      name: profile.name,
+      first_name: profile.first_name,
+      last_name: profile.last_name,
       nome: nome,
       roleOriginal: profile.role,
       roleNormalizado: role,
