@@ -40,6 +40,7 @@ interface NameSelectFieldProps {
   placeholder?: string;
   error?: string;
   style?: ViewStyle;
+  loading?: boolean;
 }
 
 const MANUAL_INPUT_OPTION_ID = '__MANUAL_INPUT__';
@@ -52,6 +53,7 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
   placeholder = 'Digite para buscar...',
   error,
   style,
+  loading = false,
 }) => {
   // Iniciar sempre como select, não como manual
   const [isManualMode, setIsManualMode] = useState(false);
@@ -398,27 +400,29 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
       >
         {/* Sempre usar o mesmo TextInput - mesma aparência sempre */}
         <>
-          <TextInput
-            ref={inputRef}
-            style={[
-              styles.input,
-              error && styles.inputError,
-              Platform.OS === 'web'
-                ? {
-                    position: 'relative' as ViewStyle['position'],
-                  }
-                : {},
-            ]}
-            value={searchText}
-            onChangeText={handleChange}
-            onFocus={handleFocus}
-            onBlur={handleBlur}
-            placeholder={isManualMode ? "Digite o nome completo manualmente" : placeholder}
-            placeholderTextColor={theme.colors.textSecondary}
-            returnKeyType="done"
-            onSubmitEditing={handleEnterPress}
-            autoCapitalize="words"
-            onKeyPress={(e) => {
+          <View style={{ position: 'relative', flex: 1 }}>
+            <TextInput
+              ref={inputRef}
+              style={[
+                styles.input,
+                error && styles.inputError,
+                Platform.OS === 'web'
+                  ? {
+                      position: 'relative' as ViewStyle['position'],
+                    }
+                  : {},
+              ]}
+              value={searchText}
+              onChangeText={handleChange}
+              onFocus={handleFocus}
+              onBlur={handleBlur}
+              placeholder={loading ? "Carregando nomes..." : (isManualMode ? "Digite o nome completo manualmente" : placeholder)}
+              placeholderTextColor={theme.colors.textSecondary}
+              returnKeyType="done"
+              onSubmitEditing={handleEnterPress}
+              autoCapitalize="words"
+              editable={!loading}
+              onKeyPress={(e) => {
               // Suporte para Android/iOS com teclado físico ou virtual
               if (Platform.OS !== 'web') {
                 // No mobile, Enter já é tratado por onSubmitEditing

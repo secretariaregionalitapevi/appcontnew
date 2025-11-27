@@ -55,6 +55,7 @@ export const RegisterScreen: React.FC = () => {
   const [cargos, setCargos] = useState<Cargo[]>([]);
   const [instrumentos, setInstrumentos] = useState<Instrumento[]>([]);
   const [pessoas, setPessoas] = useState<Pessoa[]>([]);
+  const [loadingPessoas, setLoadingPessoas] = useState(false);
 
   const [selectedComum, setSelectedComum] = useState<string>('');
   const [selectedCargo, setSelectedCargo] = useState<string>('');
@@ -447,6 +448,10 @@ export const RegisterScreen: React.FC = () => {
   }, [refreshing, syncing, isOnline, syncData, refreshCount, loadInitialData]);
 
   const loadPessoas = async () => {
+    // 🚀 OTIMIZAÇÃO: Mostrar loading imediatamente
+    setLoadingPessoas(true);
+    setPessoas([]); // Limpar lista imediatamente para feedback visual
+    
     try {
       const pessoasData = await (supabaseDataService as any).getPessoasFromLocal(
         selectedComum,
@@ -458,6 +463,8 @@ export const RegisterScreen: React.FC = () => {
     } catch (error) {
       console.error('❌ Erro ao carregar pessoas:', error);
       setPessoas([]);
+    } finally {
+      setLoadingPessoas(false);
     }
   };
 
