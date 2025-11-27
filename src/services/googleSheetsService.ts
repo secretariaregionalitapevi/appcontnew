@@ -99,14 +99,15 @@ export const googleSheetsService = {
       console.log('🌐 [EXTERNAL] Fazendo fetch para:', GOOGLE_SHEETS_API_URL);
       
       try {
+        // 🚨 CRÍTICO: Usar mesmo formato do backupcont (text/plain, sem mode explícito)
         const response = await fetch(GOOGLE_SHEETS_API_URL, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
+            'Content-Type': 'text/plain;charset=utf-8',
           },
           body: requestBody,
           signal: controller.signal,
-          mode: 'cors', // Usar CORS para poder ler a resposta
+          // Não especificar mode - deixar o navegador decidir (pode ser no-cors)
         });
 
         console.log('📥 [EXTERNAL] Fetch concluído, status:', response.status);
