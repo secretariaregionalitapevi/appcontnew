@@ -13,6 +13,18 @@ import { normalizeForSearch, normalizeString, sanitizeString, isValidString } fr
 import { normalizeInstrumentoForSearch, expandInstrumentoSearch } from '../utils/normalizeInstrumento';
 import { getDeviceInfo, logDeviceInfo, isXiaomiDevice } from '../utils/deviceDetection';
 
+// 🚨 FUNÇÃO AUXILIAR: Verificar se é Secretário da Música (excluir) vs Secretário do GEM (incluir como instrutor)
+const isSecretarioDaMusica = (cargo: string): boolean => {
+  if (!cargo) return false;
+  const cargoUpper = cargo.toUpperCase();
+  // Secretário do GEM deve ser tratado como Instrutor, não como Secretário da Música
+  return (
+    cargoUpper.includes('SECRETÁRIO') && 
+    cargoUpper.includes('MÚSICA') &&
+    !cargoUpper.includes('GEM')
+  );
+};
+
 // Cache em memória para web (quando SQLite não está disponível)
 const memoryCache: {
   comuns: Comum[];
@@ -1017,12 +1029,22 @@ export const supabaseDataService = {
               
               filteredData = filteredData.filter(item => {
                 const itemInstrumento = (item.instrumento || '').toUpperCase();
-                return variacoesBusca.some(v => itemInstrumento.includes(v));
+                const matchesInstrumento = variacoesBusca.some(v => itemInstrumento.includes(v));
+                
+                // 🚨 CORREÇÃO: Quando busca por instrumento, incluir todos que tocam (instrutores, encarregados, Secretário do GEM)
+                // Mas excluir Secretário da Música (não toca instrumento, é cargo administrativo)
+                if (matchesInstrumento) {
+                  const itemCargo = (item.cargo || '').toUpperCase();
+                  // Incluir todos que tocam o instrumento, exceto Secretário da Música
+                  return !isSecretarioDaMusica(item.cargo || '');
+                }
+                return false;
               });
             } else {
               filteredData = filteredData.filter(item => {
                 const itemCargo = (item.cargo || '').toUpperCase();
-                return itemCargo.includes('MÚSICO') && !itemCargo.includes('SECRETÁRIO');
+                // 🚨 CORREÇÃO: Excluir apenas Secretário da Música, mas incluir Secretário do GEM (tratado como Instrutor)
+                return itemCargo.includes('MÚSICO') && !isSecretarioDaMusica(item.cargo || '');
               });
             }
           } else {
@@ -1121,8 +1143,14 @@ export const supabaseDataService = {
                   } else {
                     queryFinal = queryFinal.ilike('instrumento', `%${instrumentoBusca}%`);
                   }
+                  // 🚨 CORREÇÃO: Excluir Secretário da Música da busca por instrumento (não toca instrumento)
+                  queryFinal = queryFinal.not('cargo', 'ilike', '%SECRETÁRIO DA MÚSICA%')
+                    .not('cargo', 'ilike', '%SECRETÁRIA DA MÚSICA%');
                 } else {
-                  queryFinal = queryFinal.ilike('cargo', '%MÚSICO%').not('cargo', 'ilike', '%SECRETÁRIO%');
+                  // 🚨 CORREÇÃO: Excluir apenas Secretário da Música, mas incluir Secretário do GEM (tratado como Instrutor)
+                  queryFinal = queryFinal.ilike('cargo', '%MÚSICO%')
+                    .not('cargo', 'ilike', '%SECRETÁRIO DA MÚSICA%')
+                    .not('cargo', 'ilike', '%SECRETÁRIA DA MÚSICA%');
                 }
               } else {
                 queryFinal = queryFinal.ilike('cargo', `%${cargoBusca}%`);
@@ -1158,17 +1186,12 @@ export const supabaseDataService = {
           query = query.ilike('instrumento', '%ÓRGÃO%');
         } else if (cargoBusca === 'MÚSICO' || cargoBusca.includes('MÚSICO')) {
           // Para músico, busca por instrumento específico para retornar todos que tocam aquele instrumento
-          // (incluindo instrutores, secretários da música, encarregados)
-          // Isso permite que ao selecionar um nome, o cargo real seja capturado do banco
+          // (incluindo instrutores, Secretário do GEM, encarregados)
+          // 🚨 CORREÇÃO: Excluir Secretário da Música (não toca instrumento, é cargo administrativo)
+          // Mas incluir Secretário do GEM (tratado como Instrutor, toca instrumento)
           if (instrumentoBusca) {
             // Para outros instrumentos, criar variações de busca
             const variacoesBusca = expandInstrumentoSearch(instrumentoNome || '');
-            
-            console.log('🔍 Variações de busca para instrumento:', {
-              instrumentoOriginal: instrumentoNome,
-              instrumentoNormalizado: instrumentoBusca,
-              variacoesBusca,
-            });
             
             if (variacoesBusca.length > 1) {
               // Criar condições OR para todas as variações
@@ -1177,9 +1200,16 @@ export const supabaseDataService = {
             } else {
               query = query.ilike('instrumento', `%${instrumentoBusca}%`);
             }
+            
+            // 🚨 CORREÇÃO: Excluir Secretário da Música da busca por instrumento (não toca instrumento)
+            query = query.not('cargo', 'ilike', '%SECRETÁRIO DA MÚSICA%')
+              .not('cargo', 'ilike', '%SECRETÁRIA DA MÚSICA%');
           } else {
-            // Se não tem instrumento, buscar apenas por cargo MÚSICO (sem instrutores/secretários)
-            query = query.ilike('cargo', '%MÚSICO%').not('cargo', 'ilike', '%SECRETÁRIO%');
+            // Se não tem instrumento, buscar apenas por cargo MÚSICO
+            // 🚨 CORREÇÃO: Excluir apenas Secretário da Música, mas incluir Secretário do GEM (tratado como Instrutor)
+            query = query.ilike('cargo', '%MÚSICO%')
+              .not('cargo', 'ilike', '%SECRETÁRIO DA MÚSICA%')
+              .not('cargo', 'ilike', '%SECRETÁRIA DA MÚSICA%');
           }
         } else {
           // Para outros cargos, filtrar apenas por cargo
