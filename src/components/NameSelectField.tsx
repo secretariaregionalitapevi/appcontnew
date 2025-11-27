@@ -482,7 +482,7 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
               {/* Dropdown - Modal no mobile nativo, inline no Web */}
               {Platform.OS !== 'web' ? (
               <Modal
-                visible={showList && (filtered.length > 0 || searchText.trim().length > 0)}
+                visible={showList && filtered.length > 0}
                 transparent
                 animationType="fade"
                 onRequestClose={() => setShowList(false)}
@@ -555,7 +555,7 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
               </Modal>
             ) : (
               <>
-            {showList && filtered.length > 0 && isFocused && (
+            {showList && filtered.length > 0 && (
               <View
                 style={styles.webDropdownContainer}
               >
