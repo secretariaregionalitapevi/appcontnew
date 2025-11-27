@@ -667,8 +667,9 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
             )}
               </>
             )}
-          </>
-        )}
+            </>
+          )}
+        </>
       </View>
 
       {error && <Text style={styles.errorText}>{error}</Text>}
