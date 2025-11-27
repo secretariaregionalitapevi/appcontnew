@@ -479,6 +479,13 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
                 }
               : {})}
           />
+          {loading && (
+            <View style={styles.loadingContainer}>
+              <FontAwesome5 name="spinner" size={14} color={theme.colors.primary} style={styles.loadingSpinner} />
+              <Text style={styles.loadingText}>Carregando...</Text>
+            </View>
+          )}
+          </View>
 
           {/* Dropdown - só mostrar se não estiver em modo manual E houver opções */}
           {!isManualMode && (
