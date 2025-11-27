@@ -99,6 +99,34 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
       return optionsWithManual.slice(-1); // Retornar apenas a opção manual
     }
 
+    // Verificar se já há um nome selecionado válido
+    const hasValidSelection = value && options.some(opt => opt.id === value || opt.value === value);
+
+    // 🚨 CRÍTICO: Se já há um nome selecionado válido, NUNCA mostrar opção manual
+    // Isso evita que o botão "Adicionar novo nome manualmente" apareça quando não deveria
+    if (hasValidSelection) {
+      // Filtrar opções baseado no texto
+      const query = normalize(searchText);
+      const filteredOptions = options.filter(opt => {
+        const labelNorm = normalize(opt.label);
+        return labelNorm.includes(query);
+      });
+      
+      // Se não há texto digitado, mostrar todas as opções (sem manual)
+      if (!searchText.trim()) {
+        return options;
+      }
+      
+      // Se há resultados filtrados, mostrar apenas eles (sem manual)
+      if (filteredOptions.length > 0) {
+        return filteredOptions;
+      }
+      
+      // Se não há resultados filtrados, mostrar lista vazia (não mostrar manual)
+      return [];
+    }
+
+    // Se não há seleção válida, permitir opção manual quando apropriado
     // Filtrar opções baseado no texto
     const query = normalize(searchText);
     const filteredOptions = options.filter(opt => {
@@ -107,20 +135,18 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
     });
 
     // Se não há texto digitado, mostrar todas as opções + opção manual no final
-    // SEMPRE mostrar lista quando não há texto (igual músicos)
     if (!searchText.trim()) {
       return optionsWithManual;
     }
 
-    // Se há resultados filtrados, mostrar apenas eles (sem opção manual sobrepondo)
-    // A opção manual só aparece quando não há resultados ou quando a lista está vazia
+    // Se há resultados filtrados, mostrar apenas eles (sem opção manual)
     if (filteredOptions.length > 0) {
       return filteredOptions;
     }
 
     // Se não há resultados filtrados, mostrar apenas a opção manual
     return optionsWithManual.slice(-1);
-  }, [searchText, options, optionsWithManual, isManualMode]);
+  }, [searchText, options, optionsWithManual, isManualMode, value]);
 
   // Sincronizar searchText com value quando muda externamente
   useEffect(() => {
@@ -189,6 +215,15 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
     }
 
     if (isManualMode) {
+      return;
+    }
+
+    // 🚨 CRÍTICO: Se já há um nome selecionado válido, não abrir dropdown automaticamente
+    // Só abrir quando o usuário começar a digitar
+    const hasValidSelection = value && options.some(opt => opt.id === value || opt.value === value);
+    if (hasValidSelection && !searchText.trim()) {
+      // Não abrir dropdown se já há seleção e não há texto digitado
+      setShowList(false);
       return;
     }
 
@@ -514,7 +549,7 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
               </Modal>
             ) : (
               <>
-            {showList && filtered.length > 0 && (
+            {showList && filtered.length > 0 && isFocused && (
               <View
                 style={styles.webDropdownContainer}
               >
@@ -615,7 +650,7 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
             )}
 
             {/* Mensagem quando não há resultados */}
-            {showList && filtered.length === 0 && searchText.trim().length > 0 && (
+            {showList && filtered.length === 0 && searchText.trim().length > 0 && isFocused && (
               <View style={styles.webDropdownContainer}>
                 <View style={styles.dropdown}>
                   <View style={styles.emptyContainer}>
