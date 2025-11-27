@@ -1311,6 +1311,17 @@ export const RegisterScreen: React.FC = () => {
       // NÃO usar createRegistro que tenta validar contra listas locais
       // Seguir o mesmo padrão do backupcont: enviar direto para Google Sheets, NÃO para Supabase
       console.log('📤 [MODAL] Enviando registro externo diretamente para Google Sheets (sem validação local)');
+      console.log('📤 [MODAL] Dados do registro:', {
+        nome: data.nome,
+        comum: data.comum,
+        cidade: data.cidade,
+        cargo: cargoObj.nome,
+        instrumento: instrumentoObj?.nome,
+        classe: data.classe,
+        localEnsaio: localEnsaio || 'Não definido',
+        registradoPor: nomeUsuario,
+        userId: user.id,
+      });
       
       const result = await googleSheetsService.sendExternalRegistroToSheet({
         nome: data.nome,
@@ -1323,6 +1334,8 @@ export const RegisterScreen: React.FC = () => {
         registradoPor: nomeUsuario,
         userId: user.id,
       });
+      
+      console.log('📥 [MODAL] Resultado do envio:', result);
       
       if (result.success) {
         console.log('✅ [MODAL] Registro enviado com sucesso para Google Sheets');

@@ -79,60 +79,92 @@ export const googleSheetsService = {
       };
 
       console.log('📤 [EXTERNAL] Dados formatados para Google Sheets:', sheetRow);
+      console.log('📤 [EXTERNAL] URL da API:', GOOGLE_SHEETS_API_URL);
+      console.log('📤 [EXTERNAL] Nome da planilha:', SHEET_NAME);
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // Aumentado para 30s
 
-      const response = await fetch(GOOGLE_SHEETS_API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'text/plain;charset=utf-8',
-        },
-        body: JSON.stringify({
-          op: 'append',
-          sheet: SHEET_NAME,
-          data: sheetRow,
-        }),
-        signal: controller.signal,
+      const requestBody = JSON.stringify({
+        op: 'append',
+        sheet: SHEET_NAME,
+        data: sheetRow,
       });
 
-      clearTimeout(timeoutId);
+      console.log('📤 [EXTERNAL] Corpo da requisição:', requestBody);
 
-      if (response.type === 'opaque') {
-        console.log('✅ [EXTERNAL] Google Sheets: Dados enviados (no-cors)');
-        return { success: true };
-      }
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ [EXTERNAL] Erro HTTP ao enviar para Google Sheets:', response.status, errorText);
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
-      }
-
-      // Tentar parsear JSON, mas se falhar, considerar sucesso (no-cors pode retornar texto vazio)
-      let result: any = null;
       try {
-        const responseText = await response.text();
-        console.log('📥 [EXTERNAL] Resposta do Google Sheets (texto):', responseText);
-        
-        if (responseText.trim()) {
-          result = JSON.parse(responseText);
-          console.log('✅ [EXTERNAL] Google Sheets: Resposta (JSON):', result);
-        } else {
-          // Resposta vazia é comum em no-cors, considerar sucesso
-          console.log('✅ [EXTERNAL] Google Sheets: Resposta vazia (no-cors) - considerando sucesso');
+        const response = await fetch(GOOGLE_SHEETS_API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: requestBody,
+          signal: controller.signal,
+          mode: 'cors', // Usar CORS para poder ler a resposta
+        });
+
+        clearTimeout(timeoutId);
+
+        console.log('📥 [EXTERNAL] Status da resposta:', response.status);
+        console.log('📥 [EXTERNAL] Tipo da resposta:', response.type);
+        console.log('📥 [EXTERNAL] Response OK:', response.ok);
+
+        if (response.type === 'opaque') {
+          console.log('✅ [EXTERNAL] Google Sheets: Dados enviados (no-cors)');
           return { success: true };
         }
-      } catch (parseError) {
-        // Se não conseguir parsear, mas a resposta foi OK, considerar sucesso
-        console.log('⚠️ [EXTERNAL] Não foi possível parsear resposta, mas status é OK - considerando sucesso');
-        return { success: true };
-      }
 
-      if (result && result.success !== false) {
-        return { success: true };
-      } else {
-        throw new Error(result?.message || 'Erro desconhecido ao enviar para Google Sheets');
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('❌ [EXTERNAL] Erro HTTP ao enviar para Google Sheets:', response.status, errorText);
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+
+        // Tentar parsear JSON
+        let result: any = null;
+        try {
+          const responseText = await response.text();
+          console.log('📥 [EXTERNAL] Resposta do Google Sheets (texto):', responseText);
+          
+          if (responseText.trim()) {
+            result = JSON.parse(responseText);
+            console.log('✅ [EXTERNAL] Google Sheets: Resposta (JSON):', result);
+          } else {
+            // Resposta vazia - verificar se status é OK
+            if (response.ok) {
+              console.log('✅ [EXTERNAL] Google Sheets: Resposta vazia mas status OK - considerando sucesso');
+              return { success: true };
+            } else {
+              throw new Error('Resposta vazia com status não OK');
+            }
+          }
+        } catch (parseError) {
+          console.error('❌ [EXTERNAL] Erro ao parsear resposta:', parseError);
+          // Se não conseguir parsear, mas a resposta foi OK, considerar sucesso
+          if (response.ok) {
+            console.log('⚠️ [EXTERNAL] Não foi possível parsear resposta, mas status é OK - considerando sucesso');
+            return { success: true };
+          } else {
+            throw new Error('Erro ao processar resposta do servidor');
+          }
+        }
+
+        if (result && result.success !== false) {
+          console.log('✅ [EXTERNAL] Registro enviado com sucesso!');
+          return { success: true };
+        } else {
+          const errorMsg = result?.message || result?.error || 'Erro desconhecido ao enviar para Google Sheets';
+          console.error('❌ [EXTERNAL] Erro na resposta:', errorMsg);
+          throw new Error(errorMsg);
+        }
+      } catch (fetchError: any) {
+        clearTimeout(timeoutId);
+        if (fetchError.name === 'AbortError') {
+          console.error('❌ [EXTERNAL] Timeout ao enviar para Google Sheets');
+          throw new Error('Timeout ao enviar registro. Tente novamente.');
+        }
+        throw fetchError;
       }
     } catch (error: any) {
       console.error('❌ [EXTERNAL] Erro ao enviar registro externo para Google Sheets:', error);
