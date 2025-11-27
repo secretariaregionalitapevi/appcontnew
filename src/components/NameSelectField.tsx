@@ -261,18 +261,8 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
       return;
     }
 
-    // Verificar se já há um nome selecionado válido
-    const hasValidSelection = value && options.some(opt => opt.id === value || opt.value === value);
-    const isManualValue = value && typeof value === 'string' && value.startsWith('manual_');
-    
-    // Se há um nome selecionado válido (não manual) e não há texto digitado, não abrir dropdown
-    // Isso evita que o dropdown abra automaticamente quando o campo já tem um nome selecionado
-    if (hasValidSelection && !isManualValue && !searchText.trim()) {
-      setShowList(false);
-      return;
-    }
-
-    // Caso contrário, abrir dropdown
+    // 🚨 CRÍTICO: Sempre abrir dropdown quando há opções e não está em modo manual
+    // Isso permite que o usuário veja e selecione nomes da lista
     setShowList(true);
   };
 
@@ -406,127 +396,91 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
           },
         ]}
       >
-        {isManualMode ? (
-          // Modo manual: apenas TextInput (só quando usuário escolheu manual)
-          <View style={styles.manualContainer}>
-            <TextInput
-              ref={inputRef}
-              style={[
-                styles.input,
-                error && styles.inputError,
-                Platform.OS === 'web'
-                  ? {
-                      position: 'relative' as ViewStyle['position'],
-                    }
-                  : {},
-              ]}
-              value={searchText}
-              onChangeText={handleChange}
-              onFocus={handleFocus}
-              onBlur={handleBlur}
-              placeholder="Digite o nome completo manualmente"
-              placeholderTextColor={theme.colors.textSecondary}
-              returnKeyType="done"
-              onSubmitEditing={handleEnterPress}
-              autoCapitalize="words"
-            />
-            {options.length > 0 && (
-              <TouchableOpacity
-                style={styles.backButton}
-                onPress={() => {
-                  setIsManualMode(false);
-                  setSearchText('');
-                  onSelect({ id: 'manual', label: '', value: '' });
-                }}
-                activeOpacity={0.7}
-              >
-                <FontAwesome5 name="arrow-left" size={12} color={theme.colors.primary} />
-                <Text style={styles.backButtonText}>Voltar</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        ) : (
-          // Modo select: TextInput com dropdown
-          <>
-            <TextInput
-              ref={inputRef}
-              style={[
-                styles.input,
-                error && styles.inputError,
-                Platform.OS === 'web'
-                  ? {
-                      position: 'relative' as ViewStyle['position'],
-                    }
-                  : {},
-              ]}
-              value={searchText}
-              onChangeText={handleChange}
-              onFocus={handleFocus}
-              onBlur={handleBlur}
-              placeholder={placeholder}
-              placeholderTextColor={theme.colors.textSecondary}
-              returnKeyType="done"
-              onSubmitEditing={handleEnterPress}
-              onKeyPress={(e) => {
-                // Suporte para Android/iOS com teclado físico ou virtual
-                if (Platform.OS !== 'web') {
-                  // No mobile, Enter já é tratado por onSubmitEditing
-                  // Mas podemos adicionar lógica adicional se necessário
-                  return;
-                }
-              }}
-              {...(Platform.OS === 'web'
+        {/* Sempre usar o mesmo TextInput - mesma aparência sempre */}
+        <>
+          <TextInput
+            ref={inputRef}
+            style={[
+              styles.input,
+              error && styles.inputError,
+              Platform.OS === 'web'
                 ? {
-                    onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleEnterPress();
-                      } else if (e.key === 'ArrowDown') {
-                        e.preventDefault();
-                        if (filtered.length > 0) {
-                          const nextIndex =
-                            selectedIndex < filtered.length - 1 ? selectedIndex + 1 : 0;
-                          setSelectedIndex(nextIndex);
-                          if (flatListRef.current && nextIndex >= 0) {
-                            setTimeout(() => {
-                              flatListRef.current?.scrollToIndex({
-                                index: nextIndex,
-                                animated: true,
-                                viewOffset: 10,
-                              });
-                            }, 50);
-                          }
-                        }
-                      } else if (e.key === 'ArrowUp') {
-                        e.preventDefault();
-                        if (filtered.length > 0) {
-                          const prevIndex =
-                            selectedIndex > 0 ? selectedIndex - 1 : filtered.length - 1;
-                          setSelectedIndex(prevIndex);
-                          if (flatListRef.current && prevIndex >= 0) {
-                            setTimeout(() => {
-                              flatListRef.current?.scrollToIndex({
-                                index: prevIndex,
-                                animated: true,
-                                viewOffset: 10,
-                              });
-                            }, 50);
-                          }
-                        }
-                      } else if (e.key === 'Escape') {
-                        e.preventDefault();
-                        setShowList(false);
-                        if (inputRef.current) {
-                          inputRef.current.blur();
+                    position: 'relative' as ViewStyle['position'],
+                  }
+                : {},
+            ]}
+            value={searchText}
+            onChangeText={handleChange}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            placeholder={isManualMode ? "Digite o nome completo manualmente" : placeholder}
+            placeholderTextColor={theme.colors.textSecondary}
+            returnKeyType="done"
+            onSubmitEditing={handleEnterPress}
+            autoCapitalize="words"
+            onKeyPress={(e) => {
+              // Suporte para Android/iOS com teclado físico ou virtual
+              if (Platform.OS !== 'web') {
+                // No mobile, Enter já é tratado por onSubmitEditing
+                // Mas podemos adicionar lógica adicional se necessário
+                return;
+              }
+            }}
+            {...(Platform.OS === 'web'
+              ? {
+                  onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleEnterPress();
+                    } else if (e.key === 'ArrowDown' && !isManualMode) {
+                      e.preventDefault();
+                      if (filtered.length > 0) {
+                        const nextIndex =
+                          selectedIndex < filtered.length - 1 ? selectedIndex + 1 : 0;
+                        setSelectedIndex(nextIndex);
+                        if (flatListRef.current && nextIndex >= 0) {
+                          setTimeout(() => {
+                            flatListRef.current?.scrollToIndex({
+                              index: nextIndex,
+                              animated: true,
+                              viewOffset: 10,
+                            });
+                          }, 50);
                         }
                       }
-                    },
-                  }
-                : {})}
-            />
+                    } else if (e.key === 'ArrowUp' && !isManualMode) {
+                      e.preventDefault();
+                      if (filtered.length > 0) {
+                        const prevIndex =
+                          selectedIndex > 0 ? selectedIndex - 1 : filtered.length - 1;
+                        setSelectedIndex(prevIndex);
+                        if (flatListRef.current && prevIndex >= 0) {
+                          setTimeout(() => {
+                            flatListRef.current?.scrollToIndex({
+                              index: prevIndex,
+                              animated: true,
+                              viewOffset: 10,
+                            });
+                          }, 50);
+                        }
+                      }
+                    } else if (e.key === 'Escape') {
+                      e.preventDefault();
+                      setShowList(false);
+                      if (inputRef.current) {
+                        inputRef.current.blur();
+                      }
+                    }
+                  },
+                }
+              : {})}
+          />
 
-            {/* Dropdown - Modal no mobile nativo, inline no Web */}
-            {Platform.OS !== 'web' ? (
+          {/* Dropdown - só mostrar se não estiver em modo manual E houver opções */}
+          {!isManualMode && (
+            <>
+              {/* Dropdown - Modal no mobile nativo, inline no Web */}
+              {Platform.OS !== 'web' ? (
               <Modal
                 visible={showList && (filtered.length > 0 || searchText.trim().length > 0)}
                 transparent
