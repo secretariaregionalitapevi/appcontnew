@@ -106,6 +106,11 @@ export const googleSheetsService = {
       }
       // Se não é organista/relacionado e não tem instrumento, deixa vazio (ex: Encarregado Local, Ancião)
 
+      // 🚨 CRÍTICO: Converter local de ensaio ANTES de criar sheetRow
+      const localEnsaioConvertido = converterLocalEnsaioIdParaNome(data.localEnsaio);
+      console.log('🔄 [EXTERNAL] Local de ensaio original:', data.localEnsaio);
+      console.log('🔄 [EXTERNAL] Local de ensaio convertido:', localEnsaioConvertido);
+      
       // Formato esperado pelo Google Apps Script (igual ao backupcont)
       const sheetRow = {
         UUID: uuid,
@@ -116,7 +121,7 @@ export const googleSheetsService = {
         INSTRUMENTO: instrumentoFinal,
         NAIPE_INSTRUMENTO: naipeFinal,
         CLASSE_ORGANISTA: (data.classe || '').toUpperCase(),
-        LOCAL_ENSAIO: converterLocalEnsaioIdParaNome(data.localEnsaio).toUpperCase(),
+        LOCAL_ENSAIO: localEnsaioConvertido.toUpperCase(),
         DATA_ENSAIO: new Date().toLocaleDateString('pt-BR', {
           day: '2-digit',
           month: '2-digit',
@@ -144,6 +149,9 @@ export const googleSheetsService = {
       console.log('📤 [EXTERNAL] Instrumento final:', instrumentoFinal);
       console.log('📤 [EXTERNAL] Naipe final:', naipeFinal);
       console.log('📤 [EXTERNAL] CLASSE_ORGANISTA no sheetRow:', sheetRow.CLASSE_ORGANISTA);
+      console.log('📤 [EXTERNAL] LOCAL_ENSAIO original:', data.localEnsaio);
+      console.log('📤 [EXTERNAL] LOCAL_ENSAIO convertido:', localEnsaioConvertido);
+      console.log('📤 [EXTERNAL] LOCAL_ENSAIO no sheetRow:', sheetRow.LOCAL_ENSAIO);
       console.log('📤 [EXTERNAL] URL da API:', GOOGLE_SHEETS_API_URL);
       console.log('📤 [EXTERNAL] Nome da planilha:', SHEET_NAME);
 
@@ -260,16 +268,34 @@ export const googleSheetsService = {
           return { success: true };
         }
 
+        // 🚨 CRÍTICO: Verificar se é erro antes de assumir sucesso em no-cors
+        // Se responseBody contém erro, NÃO assumir sucesso mesmo em no-cors
+        const temErroNoCorpo = responseBody && (
+          responseBody.toLowerCase().includes('error') ||
+          responseBody.toLowerCase().includes('erro') ||
+          responseBody.toLowerCase().includes('não reconhecida') ||
+          responseBody.toLowerCase().includes('nao reconhecida') ||
+          responseBody.toLowerCase().includes('operacao nao reconhecida') ||
+          responseBody.toLowerCase().includes('operação não reconhecida')
+        );
+        
+        if (temErroNoCorpo) {
+          console.error('❌ [EXTERNAL] Erro detectado no corpo da resposta (mesmo em no-cors):', responseBody);
+          throw new Error(`Google Sheets retornou erro: ${responseBody}`);
+        }
+        
         // Se a resposta é opaca (no-cors), também considera sucesso (fallback)
         // Isso é importante porque no-cors sempre retorna response.ok = false
         if (response.type === 'opaque') {
           console.log('✅ [EXTERNAL] Google Sheets: Dados enviados (no-cors - assumindo sucesso)');
+          console.log('⚠️ [EXTERNAL] ATENÇÃO: no-cors não permite verificar resposta, assumindo sucesso');
           return { success: true };
         }
 
         // Se status é 0, pode ser no-cors também
         if (response.status === 0) {
           console.log('✅ [EXTERNAL] Google Sheets: Assumindo sucesso (status 0 - provável no-cors)');
+          console.log('⚠️ [EXTERNAL] ATENÇÃO: status 0 pode indicar no-cors, assumindo sucesso');
           return { success: true };
         }
 

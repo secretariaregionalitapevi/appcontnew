@@ -1385,8 +1385,14 @@ export const RegisterScreen: React.FC = () => {
         instrumento: instrumentoObj?.nome,
         classe: data.classe,
         localEnsaio: localEnsaioNome,
+        localEnsaioOriginal: localEnsaio,
         registradoPor: nomeUsuario,
         userId: user.id,
+      });
+      console.log('🔄 [MODAL] Verificação de conversão de local:', {
+        original: localEnsaio,
+        convertido: localEnsaioNome,
+        ehNumero: localEnsaio ? /^\d+$/.test(localEnsaio.trim()) : false,
       });
       
       console.log('🔄 [MODAL] ========== INICIANDO ENVIO PARA GOOGLE SHEETS ==========');
@@ -1399,9 +1405,11 @@ export const RegisterScreen: React.FC = () => {
         instrumento: instrumentoObj?.nome,
         classe: data.classe,
         localEnsaio: localEnsaioNome,
+        localEnsaioOriginal: localEnsaio,
         registradoPor: nomeUsuario,
         userId: user.id,
       });
+      console.log('✅ [MODAL] CONFIRMAÇÃO: localEnsaio que será enviado é:', localEnsaioNome, '(deve ser nome, não ID)');
       let result;
       try {
         console.log('🔄 [MODAL] ANTES de chamar sendExternalRegistroToSheet');
