@@ -135,9 +135,46 @@ if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof document !=
         padding: 0 !important;
       }
       .swal2-popup:not(.swal2-toast) .swal2-icon {
-        width: 48px !important;
-        height: 48px !important;
+        width: 64px !important;
+        height: 64px !important;
         margin-bottom: 1rem !important;
+        border-width: 4px !important;
+      }
+      /* Garantir que o ícone de erro (X) seja visível e bem definido */
+      .swal2-popup:not(.swal2-toast) .swal2-icon.swal2-error,
+      .swal2-icon-error-visible {
+        border-color: #ef4444 !important;
+        color: #ef4444 !important;
+        background-color: transparent !important;
+      }
+      .swal2-popup:not(.swal2-toast) .swal2-icon.swal2-error .swal2-x-mark,
+      .swal2-icon-error-visible .swal2-x-mark {
+        position: relative !important;
+        width: 100% !important;
+        height: 100% !important;
+        display: block !important;
+      }
+      .swal2-popup:not(.swal2-toast) .swal2-icon.swal2-error .swal2-x-mark-line,
+      .swal2-icon-error-visible .swal2-x-mark-line {
+        position: absolute !important;
+        height: 5px !important;
+        width: 32px !important;
+        background-color: #ef4444 !important;
+        border-radius: 2px !important;
+        top: 50% !important;
+        left: 50% !important;
+        margin-left: -16px !important;
+        margin-top: -2.5px !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+      }
+      .swal2-popup:not(.swal2-toast) .swal2-icon.swal2-error .swal2-x-mark-line-left,
+      .swal2-icon-error-visible .swal2-x-mark-line-left {
+        transform: rotate(45deg) !important;
+      }
+      .swal2-popup:not(.swal2-toast) .swal2-icon.swal2-error .swal2-x-mark-line-right,
+      .swal2-icon-error-visible .swal2-x-mark-line-right {
+        transform: rotate(-45deg) !important;
       }
       .swal2-popup:not(.swal2-toast) .swal2-confirm {
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
@@ -221,11 +258,12 @@ export const showToast = {
 
   error: (title: string, message?: string) => {
     if (Platform.OS === 'web') {
-      // 🚀 MELHORIA: Modal de erro compacto e elegante
+      // 🚀 MELHORIA: Modal de erro compacto e elegante com ícone visível
       const Swal = getSwal();
       if (Swal) {
         Swal.fire({
           icon: 'error',
+          iconColor: '#ef4444',
           title: title,
           text: message || '',
           timer: 4000,
@@ -241,6 +279,7 @@ export const showToast = {
             title: 'swal2-title-compact',
             content: 'swal2-content-compact',
             confirmButton: 'swal2-confirm-compact',
+            icon: 'swal2-icon-error-visible',
           },
         });
       } else {

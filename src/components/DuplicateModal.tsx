@@ -133,12 +133,12 @@ export const DuplicateModal: React.FC<DuplicateModalProps> = ({
           {/* Botões */}
           <View style={styles.buttonsContainer}>
             <TouchableOpacity style={styles.cancelButton} onPress={onCancel} activeOpacity={0.6} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <FontAwesome5 name="times" size={14} color="#666" />
+              <FontAwesome5 name="times" size={14} color="#666" style={styles.buttonIcon} />
               <Text style={styles.cancelButtonText}>Cancelar</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.confirmButton} onPress={onConfirm} activeOpacity={0.6} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <FontAwesome5 name="check" size={14} color="#fff" />
+              <FontAwesome5 name="check" size={14} color="#fff" style={styles.buttonIcon} />
               <Text style={styles.confirmButtonText}>Cadastrar Mesmo Assim</Text>
             </TouchableOpacity>
           </View>
@@ -264,19 +264,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#fafafa',
     borderTopWidth: 1,
     borderTopColor: '#e9ecef',
+    alignItems: 'stretch', // Garantir que ambos os botões tenham a mesma altura
   },
   cancelButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: Platform.OS === 'web' ? 12 : 14, // Aumentado
-    paddingHorizontal: theme.spacing.lg, // Aumentado de md para lg
+    paddingVertical: Platform.OS === 'web' ? 14 : 16,
+    paddingHorizontal: theme.spacing.md,
     borderRadius: 8,
     backgroundColor: '#ffffff',
     borderWidth: 1.5,
     borderColor: '#dee2e6',
-    minHeight: Platform.OS === 'web' ? 44 : 52, // Aumentado
+    minHeight: Platform.OS === 'web' ? 48 : 52,
     ...(Platform.OS === 'web'
       ? {
           transition: 'all 0.2s ease',
@@ -288,22 +289,34 @@ const styles = StyleSheet.create({
         }
       : {}),
   },
+  buttonIcon: {
+    // Garantir que o ícone esteja alinhado verticalmente
+    ...(Platform.OS === 'web' ? {
+      // @ts-ignore
+      display: 'flex',
+      // @ts-ignore
+      alignItems: 'center',
+      // @ts-ignore
+      justifyContent: 'center',
+    } : {}),
+  },
   cancelButtonText: {
     fontSize: 14,
     fontWeight: '600',
     color: '#495057',
-    marginLeft: 6,
+    marginLeft: 8, // Aumentado de 6 para 8 para melhor espaçamento
+    textAlign: 'center',
   },
   confirmButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: Platform.OS === 'web' ? 12 : 14, // Aumentado
-    paddingHorizontal: theme.spacing.lg, // Aumentado de md para lg
+    paddingVertical: Platform.OS === 'web' ? 14 : 16,
+    paddingHorizontal: theme.spacing.md,
     borderRadius: 8,
     backgroundColor: '#ff9800',
-    minHeight: Platform.OS === 'web' ? 44 : 52, // Aumentado
+    minHeight: Platform.OS === 'web' ? 48 : 52, // Mesma altura do botão cancelar
     ...(Platform.OS === 'web'
       ? {
           boxShadow: '0 2px 8px rgba(255, 152, 0, 0.25)',
@@ -330,7 +343,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#ffffff',
-    marginLeft: 6,
+    marginLeft: 8, // Aumentado de 6 para 8 para melhor espaçamento
     letterSpacing: 0.2,
+    textAlign: 'center',
+    flexShrink: 1, // Permitir que o texto quebre se necessário
   },
 });
