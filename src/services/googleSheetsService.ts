@@ -223,18 +223,25 @@ export const googleSheetsService = {
           try {
             responseJson = JSON.parse(responseBody);
             console.log('📥 [EXTERNAL] Resposta parseada como JSON:', responseJson);
+            console.log('📥 [EXTERNAL] responseJson.ok:', responseJson?.ok);
+            console.log('📥 [EXTERNAL] responseJson.op:', responseJson?.op);
+            console.log('📥 [EXTERNAL] responseJson.inserted:', responseJson?.inserted);
+            console.log('📥 [EXTERNAL] responseJson.error:', responseJson?.error);
             
             // 🚨 CRÍTICO: Se o JSON tem ok: false, é um erro mesmo com status HTTP OK
             if (responseJson && responseJson.ok === false) {
               const errorMsg = responseJson.error || 'Erro desconhecido do Google Apps Script';
               console.error('❌ [EXTERNAL] Google Apps Script retornou ok: false');
               console.error('❌ [EXTERNAL] Erro:', errorMsg);
-              console.error('❌ [EXTERNAL] Dados que causaram erro:', sheetRow);
+              console.error('❌ [EXTERNAL] Cargo que causou erro:', sheetRow.CARGO);
+              console.error('❌ [EXTERNAL] Nome que causou erro:', sheetRow['NOME COMPLETO']);
+              console.error('❌ [EXTERNAL] Dados completos que causaram erro:', JSON.stringify(sheetRow, null, 2));
               throw new Error(errorMsg);
             }
           } catch (parseError) {
             // Se não é JSON válido, continuar com verificação de texto
             console.log('📥 [EXTERNAL] Resposta não é JSON válido, verificando como texto');
+            console.log('📥 [EXTERNAL] Parse error:', parseError);
           }
         }
 
@@ -291,19 +298,36 @@ export const googleSheetsService = {
           responseBody.toLowerCase().includes('não reconhecida') ||
           responseBody.toLowerCase().includes('nao reconhecida') ||
           responseBody.toLowerCase().includes('operacao nao reconhecida') ||
+          responseBody.toLowerCase().includes('operação não reconhecida') ||
+          responseBody.toLowerCase().includes('operacao nao reconhecida') ||
           responseBody.toLowerCase().includes('operação não reconhecida')
         );
         
         if (temErroNoCorpo) {
           console.error('❌ [EXTERNAL] Erro detectado no corpo da resposta (mesmo em no-cors):', responseBody);
+          console.error('❌ [EXTERNAL] Cargo que causou erro:', sheetRow.CARGO);
+          console.error('❌ [EXTERNAL] Nome que causou erro:', sheetRow['NOME COMPLETO']);
           throw new Error(`Google Sheets retornou erro: ${responseBody}`);
+        }
+        
+        // 🚨 CRÍTICO: Se responseBody contém JSON válido com ok: false, é erro mesmo em no-cors
+        if (responseJson && responseJson.ok === false) {
+          const errorMsg = responseJson.error || 'Erro desconhecido do Google Apps Script';
+          console.error('❌ [EXTERNAL] Google Apps Script retornou ok: false (mesmo com status OK)');
+          console.error('❌ [EXTERNAL] Erro:', errorMsg);
+          console.error('❌ [EXTERNAL] Cargo que causou erro:', sheetRow.CARGO);
+          console.error('❌ [EXTERNAL] Nome que causou erro:', sheetRow['NOME COMPLETO']);
+          throw new Error(errorMsg);
         }
         
         // Se a resposta é opaca (no-cors), também considera sucesso (fallback)
         // Isso é importante porque no-cors sempre retorna response.ok = false
+        // MAS só assumir sucesso se não detectamos erro acima
         if (response.type === 'opaque') {
           console.log('✅ [EXTERNAL] Google Sheets: Dados enviados (no-cors - assumindo sucesso)');
           console.log('⚠️ [EXTERNAL] ATENÇÃO: no-cors não permite verificar resposta, assumindo sucesso');
+          console.log('⚠️ [EXTERNAL] Cargo enviado:', sheetRow.CARGO);
+          console.log('⚠️ [EXTERNAL] Se não aparecer na planilha, pode ser erro silencioso');
           return { success: true };
         }
 
@@ -311,6 +335,8 @@ export const googleSheetsService = {
         if (response.status === 0) {
           console.log('✅ [EXTERNAL] Google Sheets: Assumindo sucesso (status 0 - provável no-cors)');
           console.log('⚠️ [EXTERNAL] ATENÇÃO: status 0 pode indicar no-cors, assumindo sucesso');
+          console.log('⚠️ [EXTERNAL] Cargo enviado:', sheetRow.CARGO);
+          console.log('⚠️ [EXTERNAL] Se não aparecer na planilha, pode ser erro silencioso');
           return { success: true };
         }
 
