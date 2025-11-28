@@ -1326,7 +1326,6 @@ export const RegisterScreen: React.FC = () => {
             data_hora_registro: getCurrentDateTimeISO(),
             usuario_responsavel: nomeUsuario,
             status_sincronizacao: 'pending',
-            cidade: data.cidade,
           };
           
           // Salvar usando saveRegistroToLocal (funciona em Android/iOS/Web)
@@ -1401,7 +1400,6 @@ export const RegisterScreen: React.FC = () => {
             data_hora_registro: getCurrentDateTimeISO(),
             usuario_responsavel: nomeUsuario,
             status_sincronizacao: 'pending',
-            cidade: data.cidade,
           };
           
           await supabaseDataService.saveRegistroToLocal(registroFallback);
