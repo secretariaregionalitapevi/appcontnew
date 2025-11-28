@@ -142,55 +142,9 @@ if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof document !=
         padding: 0 !important;
         text-align: center !important;
       }
-      .swal2-popup:not(.swal2-toast) .swal2-icon {
-        width: 80px !important;
-        height: 80px !important;
-        margin: 0 auto 1.5rem auto !important;
-        border-width: 0 !important;
-        background-color: transparent !important;
-      }
-      /* Ícone de erro elegante e bem visível */
-      .swal2-popup:not(.swal2-toast) .swal2-icon.swal2-error,
-      .swal2-icon-error-visible {
-        border: none !important;
-        background-color: #fee2e2 !important;
-        border-radius: 50% !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-      }
-      .swal2-popup:not(.swal2-toast) .swal2-icon.swal2-error .swal2-x-mark,
-      .swal2-icon-error-visible .swal2-x-mark {
-        position: relative !important;
-        width: 100% !important;
-        height: 100% !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        flex-shrink: 0 !important;
-      }
-      .swal2-popup:not(.swal2-toast) .swal2-icon.swal2-error .swal2-x-mark-line,
-      .swal2-icon-error-visible .swal2-x-mark-line {
-        position: absolute !important;
-        height: 4px !important;
-        width: 36px !important;
-        background-color: #dc2626 !important;
-        border-radius: 2px !important;
-        top: 50% !important;
-        left: 50% !important;
-        margin-left: -18px !important;
-        margin-top: -2px !important;
-        opacity: 1 !important;
-        visibility: visible !important;
-        transform-origin: center !important;
-      }
-      .swal2-popup:not(.swal2-toast) .swal2-icon.swal2-error .swal2-x-mark-line-left,
-      .swal2-icon-error-visible .swal2-x-mark-line-left {
-        transform: rotate(45deg) !important;
-      }
-      .swal2-popup:not(.swal2-toast) .swal2-icon.swal2-error .swal2-x-mark-line-right,
-      .swal2-icon-error-visible .swal2-x-mark-line-right {
-        transform: rotate(-45deg) !important;
+      /* Remover estilos do ícone padrão já que usamos HTML customizado */
+      .swal2-popup-error-elegant .swal2-icon {
+        display: none !important;
       }
       .swal2-popup:not(.swal2-toast) .swal2-confirm,
       .swal2-confirm-error-elegant {
@@ -284,14 +238,32 @@ export const showToast = {
 
   error: (title: string, message?: string) => {
     if (Platform.OS === 'web') {
-      // 🚀 MELHORIA: Modal de erro elegante e bem formatado
+      // 🚀 MELHORIA: Modal de erro elegante com ícone SVG customizado
       const Swal = getSwal();
       if (Swal) {
+        // Criar HTML completo com ícone SVG customizado (X bem proporcional)
+        const customHtml = `
+          <div style="
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 1.5rem auto;
+            background-color: #fee2e2;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          ">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M18 6L6 18M6 6L18 18" stroke="#dc2626" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h2 class="swal2-title" style="font-size: 20px; font-weight: 700; color: #1f2937; margin-bottom: 1rem; text-align: center;">${title}</h2>
+          <div class="swal2-content" style="font-size: 15px; color: #6b7280; line-height: 1.6; text-align: center;">${message || ''}</div>
+        `;
+        
         Swal.fire({
-          icon: 'error',
-          iconColor: '#dc2626',
-          title: title,
-          text: message || '',
+          html: customHtml,
+          icon: false, // Desabilitar ícone padrão
           timer: 5000,
           timerProgressBar: true,
           showConfirmButton: true,
@@ -306,10 +278,7 @@ export const showToast = {
           allowEscapeKey: true,
           customClass: {
             popup: 'swal2-popup-error-elegant',
-            title: 'swal2-title-error-elegant',
-            content: 'swal2-content-error-elegant',
             confirmButton: 'swal2-confirm-error-elegant',
-            icon: 'swal2-icon-error-visible',
           },
         });
       } else {
