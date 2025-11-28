@@ -16,6 +16,32 @@ export interface SheetsResponse {
   message?: string;
 }
 
+// 🚨 FUNÇÃO AUXILIAR: Converter ID de local para nome (usado em ambos os fluxos)
+function converterLocalEnsaioIdParaNome(localEnsaio: string | null | undefined): string {
+  if (!localEnsaio) {
+    return 'Não definido';
+  }
+  
+  // Se já é um nome (não é apenas número), retornar como está
+  if (!/^\d+$/.test(localEnsaio.trim())) {
+    return localEnsaio.trim();
+  }
+  
+  // Se é um número (ID), converter para nome
+  const locais: { id: string; nome: string }[] = [
+    { id: '1', nome: 'Cotia' },
+    { id: '2', nome: 'Caucaia do Alto' },
+    { id: '3', nome: 'Fazendinha' },
+    { id: '4', nome: 'Itapevi' },
+    { id: '5', nome: 'Jandira' },
+    { id: '6', nome: 'Pirapora' },
+    { id: '7', nome: 'Vargem Grande' },
+  ];
+  
+  const localEncontrado = locais.find(l => l.id === localEnsaio.trim());
+  return localEncontrado?.nome || localEnsaio;
+}
+
 export const googleSheetsService = {
   // 🚨 FUNÇÃO ESPECÍFICA PARA REGISTROS EXTERNOS (MODAL DE NOVO REGISTRO)
   // Envia diretamente para Google Sheets sem validar contra listas locais
@@ -90,7 +116,7 @@ export const googleSheetsService = {
         INSTRUMENTO: instrumentoFinal,
         NAIPE_INSTRUMENTO: naipeFinal,
         CLASSE_ORGANISTA: (data.classe || '').toUpperCase(),
-        LOCAL_ENSAIO: (data.localEnsaio || 'Não definido').toUpperCase(),
+        LOCAL_ENSAIO: converterLocalEnsaioIdParaNome(data.localEnsaio).toUpperCase(),
         DATA_ENSAIO: new Date().toLocaleDateString('pt-BR', {
           day: '2-digit',
           month: '2-digit',
@@ -171,12 +197,34 @@ export const googleSheetsService = {
           console.warn('⚠️ [EXTERNAL] Não foi possível ler corpo da resposta:', readBodyError);
         }
 
+        // 🚨 CORREÇÃO CRÍTICA: Tentar parsear JSON da resposta para verificar se ok: false
+        // O Google Apps Script retorna JSON com { ok: false, error: '...' } quando há erro
+        let responseJson: any = null;
+        if (responseBody) {
+          try {
+            responseJson = JSON.parse(responseBody);
+            console.log('📥 [EXTERNAL] Resposta parseada como JSON:', responseJson);
+            
+            // 🚨 CRÍTICO: Se o JSON tem ok: false, é um erro mesmo com status HTTP OK
+            if (responseJson && responseJson.ok === false) {
+              const errorMsg = responseJson.error || 'Erro desconhecido do Google Apps Script';
+              console.error('❌ [EXTERNAL] Google Apps Script retornou ok: false');
+              console.error('❌ [EXTERNAL] Erro:', errorMsg);
+              console.error('❌ [EXTERNAL] Dados que causaram erro:', sheetRow);
+              throw new Error(errorMsg);
+            }
+          } catch (parseError) {
+            // Se não é JSON válido, continuar com verificação de texto
+            console.log('📥 [EXTERNAL] Resposta não é JSON válido, verificando como texto');
+          }
+        }
+
         // 🚨 CORREÇÃO CRÍTICA: Verificar response.ok PRIMEIRO (igual backupcont)
         // O backupcont só verifica response.ok, não verifica response.type
         if (response.ok) {
-          // 🚨 VERIFICAÇÃO ADICIONAL: Verificar se a resposta contém erro
+          // 🚨 VERIFICAÇÃO ADICIONAL: Verificar se a resposta contém erro (se não foi JSON)
           // Mesmo com status OK, o Google Apps Script pode retornar erro no corpo
-          if (responseBody && (
+          if (responseBody && !responseJson && (
             responseBody.toLowerCase().includes('error') ||
             responseBody.toLowerCase().includes('erro') ||
             responseBody.toLowerCase().includes('falha') ||
@@ -184,7 +232,9 @@ export const googleSheetsService = {
             responseBody.toLowerCase().includes('invalid') ||
             responseBody.toLowerCase().includes('inválido') ||
             responseBody.toLowerCase().includes('rejected') ||
-            responseBody.toLowerCase().includes('denied')
+            responseBody.toLowerCase().includes('denied') ||
+            responseBody.toLowerCase().includes('não reconhecida') ||
+            responseBody.toLowerCase().includes('nao reconhecida')
           )) {
             console.error('❌ [EXTERNAL] Resposta OK mas contém erro no corpo:', responseBody);
             console.error('❌ [EXTERNAL] Dados que causaram erro:', sheetRow);
@@ -195,6 +245,13 @@ export const googleSheetsService = {
           // Pode indicar que o Google Apps Script não processou corretamente
           if (responseBody && responseBody.trim().length < 10) {
             console.warn('⚠️ [EXTERNAL] Resposta muito curta, pode indicar problema:', responseBody);
+          }
+          
+          // 🚨 VERIFICAÇÃO: Se é JSON válido e ok: true, confirmar sucesso
+          if (responseJson && responseJson.ok === true) {
+            console.log('✅ [EXTERNAL] Google Sheets: Dados enviados com sucesso (JSON ok: true)');
+            console.log('✅ [EXTERNAL] UUID retornado:', responseJson.uuid);
+            return { success: true };
           }
           
           console.log('✅ [EXTERNAL] Google Sheets: Dados enviados com sucesso (status OK)');
@@ -237,8 +294,22 @@ export const googleSheetsService = {
           console.error('❌ [EXTERNAL] Erro HTTP ao enviar para Google Sheets:', response.status, responseBody);
         }
         
+        // 🚨 CORREÇÃO CRÍTICA: Tentar parsear JSON do erro para obter mensagem mais clara
+        let errorMessage = `HTTP ${response.status}: ${responseBody || 'Erro desconhecido'}`;
+        if (responseBody) {
+          try {
+            const errorJson = JSON.parse(responseBody);
+            if (errorJson && errorJson.error) {
+              errorMessage = errorJson.error;
+              console.error('❌ [EXTERNAL] Erro do Google Apps Script:', errorMessage);
+            }
+          } catch (parseError) {
+            // Não é JSON, usar mensagem original
+          }
+        }
+        
         // Se chegou aqui, response não está OK e temos o corpo da resposta
-        throw new Error(`HTTP ${response.status}: ${responseBody || 'Erro desconhecido'}`);
+        throw new Error(errorMessage);
       } catch (fetchError: any) {
         // 🚨 CORREÇÃO: Verificar se é timeout
         if (fetchError.message === 'Timeout' || fetchError.name === 'AbortError') {

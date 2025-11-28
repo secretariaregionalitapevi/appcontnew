@@ -30,7 +30,7 @@ const VARGEMGRANDE_SHEET_ID = '1BtCETMduDOV-FV6lzvEwgs5gimhYtwZbjy7tlzR8nYI';
 const REQUIRED_HEADERS = [
   'UUID','NOME COMPLETO','COMUM','CIDADE','CARGO','INSTRUMENTO',
   'NAIPE_INSTRUMENTO','CLASSE_ORGANISTA','LOCAL_ENSAIO','DATA_ENSAIO',
-  'REGISTRADO_POR','ANOTACOES'
+  'HORÁRIO','REGISTRADO_POR','ANOTACOES','SYNC_STATUS','USER_ID'
 ];
 
 // Cache para otimização
@@ -240,6 +240,30 @@ function clearCache() {
   SHEET_CACHE = null;
   HEADERS_CACHE = null;
   LAST_HEADER_CHECK = 0;
+}
+
+// 🚨 CRÍTICO: Função para garantir que os headers existem na planilha
+// Esta função estava faltando e é necessária para a operação 'append'
+function ensureHeaders(sh) {
+  const lastCol = sh.getLastColumn();
+  if (lastCol === 0) {
+    // Sheet vazia - adiciona todos os headers de uma vez
+    sh.getRange(1, 1, 1, REQUIRED_HEADERS.length).setValues([REQUIRED_HEADERS]);
+    sh.getRange(1, 1, 1, REQUIRED_HEADERS.length).setFontWeight('bold');
+    return;
+  }
+
+  // Lê apenas a primeira linha
+  const current = sh.getRange(1, 1, 1, lastCol).getValues()[0].map(h => (h || '').toString().trim());
+  
+  // Verifica se todos os headers necessários existem
+  const missing = REQUIRED_HEADERS.filter(h => !current.includes(h));
+  if (missing.length) {
+    // Adiciona apenas os headers faltantes
+    const start = current.filter(Boolean).length + 1;
+    sh.getRange(1, start, 1, missing.length).setValues([missing]);
+    sh.getRange(1, start, 1, missing.length).setFontWeight('bold');
+  }
 }
 
 // Função para determinar se a pessoa é músico
@@ -801,6 +825,57 @@ function doPost(e) {
         ok: true, 
         op: 'exportar_todas_planilhas', 
         mensagem: 'Exportação para todas as planilhas iniciada'
+      });
+    }
+
+    // 🚨 CRÍTICO: Operação 'append' para receber dados do modal de novo registro
+    // Esta operação estava faltando e por isso os cargos não eram salvos
+    if (op === 'append') {
+      const sheetName = body?.sheet || SHEET_NAME;
+      const data = body?.data || {};
+      
+      // Abrir ou criar a sheet
+      const sh = openOrCreateSheet(sheetName);
+      
+      // Garantir que os headers existem
+      ensureHeaders(sh);
+      
+      // Obter headers atuais
+      const lastCol = sh.getLastColumn();
+      const headers = sh.getRange(1, 1, 1, lastCol).getValues()[0].map(h => (h || '').toString().trim());
+      
+      // Garantir UUID se não existir
+      if (!data['UUID']) {
+        data['UUID'] = Utilities.getUuid();
+      }
+      
+      // Garantir SYNC_STATUS se não existir
+      if (!data['SYNC_STATUS']) {
+        data['SYNC_STATUS'] = 'ATUALIZADO';
+      }
+      
+      // Criar linha na ordem dos headers
+      const row = headers.map(h => {
+        if (data[h] != null) {
+          return data[h];
+        }
+        return '';
+      });
+      
+      // Adicionar linha à planilha
+      sh.appendRow(row);
+      
+      console.log('✅ Registro adicionado com sucesso:', {
+        uuid: data['UUID'],
+        cargo: data['CARGO'],
+        nome: data['NOME COMPLETO']
+      });
+      
+      return jsonResponse({ 
+        ok: true, 
+        op: 'append', 
+        inserted: 1, 
+        uuid: data['UUID'] 
       });
     }
 

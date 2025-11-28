@@ -1261,7 +1261,32 @@ export const RegisterScreen: React.FC = () => {
     }
 
     try {
-      const localEnsaio = await localStorageService.getLocalEnsaio();
+      let localEnsaio = await localStorageService.getLocalEnsaio();
+      
+      // 🚨 CRÍTICO: Converter ID para nome do local (mesma lógica do registro principal)
+      // Garantir que sempre salvamos o nome, nunca o ID
+      let localEnsaioNome: string = 'Não definido';
+      if (localEnsaio) {
+        if (/^\d+$/.test(localEnsaio.trim())) {
+          // Se é um número (ID), converter para nome
+          const locais: { id: string; nome: string }[] = [
+            { id: '1', nome: 'Cotia' },
+            { id: '2', nome: 'Caucaia do Alto' },
+            { id: '3', nome: 'Fazendinha' },
+            { id: '4', nome: 'Itapevi' },
+            { id: '5', nome: 'Jandira' },
+            { id: '6', nome: 'Pirapora' },
+            { id: '7', nome: 'Vargem Grande' },
+          ];
+          const localEncontrado = locais.find(l => l.id === localEnsaio!.trim());
+          localEnsaioNome = localEncontrado?.nome || localEnsaio;
+          console.log('🔄 [MODAL] Local de ensaio convertido de ID para nome:', localEnsaioNome);
+        } else {
+          // Já é um nome, usar diretamente
+          localEnsaioNome = localEnsaio.trim();
+        }
+      }
+      
       // Extrair apenas primeiro e último nome do usuário
       // Se não tem nome no perfil, extrair do email (remover @gmail.com e formatar)
       let nomeCompletoUsuario = user.nome;
@@ -1299,7 +1324,7 @@ export const RegisterScreen: React.FC = () => {
         cargo_id: cargoObj.id, // 🚨 USAR ID DO CARGO, NÃO O NOME
         instrumento_id: data.instrumento || undefined,
         classe_organista: data.classe || undefined,
-        local_ensaio: localEnsaio || 'Não definido',
+        local_ensaio: localEnsaioNome,
         data_hora_registro: getCurrentDateTimeISO(),
         usuario_responsavel: nomeUsuario,
         status_sincronizacao: 'pending',
@@ -1322,7 +1347,7 @@ export const RegisterScreen: React.FC = () => {
             cargo_id: cargoObj.id,
             instrumento_id: data.instrumento || undefined,
             classe_organista: data.classe || undefined,
-            local_ensaio: localEnsaio || 'Não definido',
+            local_ensaio: localEnsaioNome,
             data_hora_registro: getCurrentDateTimeISO(),
             usuario_responsavel: nomeUsuario,
             status_sincronizacao: 'pending',
@@ -1359,7 +1384,7 @@ export const RegisterScreen: React.FC = () => {
         cargo: cargoObj.nome,
         instrumento: instrumentoObj?.nome,
         classe: data.classe,
-        localEnsaio: localEnsaio || 'Não definido',
+        localEnsaio: localEnsaioNome,
         registradoPor: nomeUsuario,
         userId: user.id,
       });
@@ -1373,13 +1398,21 @@ export const RegisterScreen: React.FC = () => {
         cargo: cargoObj.nome,
         instrumento: instrumentoObj?.nome,
         classe: data.classe,
-        localEnsaio: localEnsaio || 'Não definido',
+        localEnsaio: localEnsaioNome,
         registradoPor: nomeUsuario,
         userId: user.id,
       });
       let result;
       try {
         console.log('🔄 [MODAL] ANTES de chamar sendExternalRegistroToSheet');
+        console.log('📤 [MODAL] Dados que serão enviados:', {
+          nome: data.nome,
+          comum: data.comum,
+          cidade: data.cidade,
+          cargo: cargoObj.nome,
+          instrumento: instrumentoObj?.nome,
+          classe: data.classe,
+        });
         result = await googleSheetsService.sendExternalRegistroToSheet({
           nome: data.nome,
           comum: data.comum,
@@ -1387,14 +1420,24 @@ export const RegisterScreen: React.FC = () => {
           cargo: cargoObj.nome, // Usar nome do cargo encontrado
           instrumento: instrumentoObj?.nome,
           classe: data.classe,
-          localEnsaio: localEnsaio || 'Não definido',
+          localEnsaio: localEnsaioNome,
           registradoPor: nomeUsuario,
           userId: user.id,
         });
         console.log('🔄 [MODAL] DEPOIS de chamar sendExternalRegistroToSheet');
         console.log('📥 [MODAL] Resultado do envio recebido:', result);
         console.log('📥 [MODAL] Tipo do resultado:', typeof result);
+        console.log('📥 [MODAL] result.success:', result?.success);
+        console.log('📥 [MODAL] result.error:', result?.error);
         console.log('📥 [MODAL] Resultado completo (JSON):', JSON.stringify(result, null, 2));
+        
+        // 🚨 CRÍTICO: Se result.success não é true, lançar exceção IMEDIATAMENTE
+        // Isso garante que o modal não feche silenciosamente
+        if (!result || result.success !== true) {
+          const errorMsg = result?.error || 'Erro desconhecido ao enviar registro';
+          console.error('❌ [MODAL] Envio falhou - lançando exceção:', errorMsg);
+          throw new Error(errorMsg);
+        }
       } catch (sendError: any) {
         console.error('❌ [MODAL] Erro ao chamar sendExternalRegistroToSheet:', sendError);
         console.error('❌ [MODAL] Detalhes do erro:', {
@@ -1402,6 +1445,11 @@ export const RegisterScreen: React.FC = () => {
           name: sendError.name,
           stack: sendError.stack,
         });
+        
+        // 🚨 CRÍTICO: Mostrar erro IMEDIATAMENTE para o usuário
+        const errorMessage = sendError.message || 'Erro ao enviar registro. Tente novamente.';
+        console.error('❌ [MODAL] Exibindo toast de erro:', errorMessage);
+        showToast.error('Erro ao salvar', errorMessage);
         
         // Se falhou, tentar salvar usando saveRegistroToLocal como fallback (funciona em Android/iOS/Web)
         console.log('🔄 [MODAL] Tentando salvar usando saveRegistroToLocal como fallback...');
@@ -1412,7 +1460,7 @@ export const RegisterScreen: React.FC = () => {
             cargo_id: cargoObj.id,
             instrumento_id: data.instrumento || undefined,
             classe_organista: data.classe || undefined,
-            local_ensaio: localEnsaio || 'Não definido',
+            local_ensaio: localEnsaioNome,
             data_hora_registro: getCurrentDateTimeISO(),
             usuario_responsavel: nomeUsuario,
             status_sincronizacao: 'pending',
@@ -1430,167 +1478,27 @@ export const RegisterScreen: React.FC = () => {
           return;
         } catch (fallbackError) {
           console.error('❌ [MODAL] Erro crítico ao salvar fallback:', fallbackError);
-          showToast.error('Erro', 'Erro ao salvar registro. Tente novamente.');
+          // Não mostrar outro toast de erro aqui - já mostramos acima
           throw sendError; // Re-lançar erro original
         }
       }
       
-      console.log('📥 [MODAL] Resultado do envio:', result);
-      console.log('📥 [MODAL] result.success:', result?.success);
-      console.log('📥 [MODAL] result.error:', result?.error);
-      console.log('📥 [MODAL] Tipo de result.success:', typeof result?.success);
-      console.log('📥 [MODAL] result.success === true?', result?.success === true);
-      console.log('📥 [MODAL] result.success === false?', result?.success === false);
-      console.log('📥 [MODAL] Cargo enviado:', cargoObj.nome);
-      console.log('📥 [MODAL] Dados completos enviados:', JSON.stringify({
-        nome: data.nome,
-        comum: data.comum,
-        cidade: data.cidade,
-        cargo: cargoObj.nome,
-        instrumento: instrumentoObj?.nome,
-        classe: data.classe,
-      }, null, 2));
+      // 🚨 CRÍTICO: Se chegou aqui, result.success é true (já verificamos acima)
+      // Se não fosse true, teria lançado exceção no catch acima
+      console.log('✅ [MODAL] Registro enviado com sucesso para Google Sheets');
+      console.log('✅ [MODAL] Cargo que foi salvo:', cargoObj.nome);
+      console.log('✅ [MODAL] Resultado completo:', result);
       
-      // 🚨 CORREÇÃO CRÍTICA: Verificar explicitamente se result.success é true
-      // Não confiar apenas em truthy/falsy
-      if (result && result.success === true) {
-        console.log('✅ [MODAL] Registro enviado com sucesso para Google Sheets');
-        console.log('✅ [MODAL] Cargo que foi salvo:', cargoObj.nome);
-        // 🚀 MELHORIA: Toast compacto e elegante (uma linha)
-        showToast.success('Registro de visita salvo com sucesso');
+      // 🚀 MELHORIA: Toast compacto e elegante (uma linha)
+      showToast.success('Registro de visita salvo com sucesso');
 
-        // Recarregar página após salvar (aguardar mais tempo para toast aparecer)
-        if (Platform.OS === 'web' && typeof window !== 'undefined') {
-          setTimeout(() => {
-            window.location.reload();
-          }, 2000); // Aumentado de 1500ms para 2000ms para dar tempo do toast aparecer
-        }
-      } else {
-        // 🚨 CORREÇÃO: Se result.success não é true, tratar como erro
-        console.error('❌ [MODAL] Registro NÃO foi enviado com sucesso!');
-        console.error('❌ [MODAL] Cargo que falhou:', cargoObj.nome);
-        console.error('❌ [MODAL] result:', result);
-        console.error('❌ [MODAL] result.success:', result?.success);
-        console.error('❌ [MODAL] result.error:', result?.error);
-        console.error('❌ [MODAL] Dados que falharam:', JSON.stringify({
-          nome: data.nome,
-          comum: data.comum,
-          cidade: data.cidade,
-          cargo: cargoObj.nome,
-          instrumento: instrumentoObj?.nome,
-          classe: data.classe,
-        }, null, 2));
-        
-        // 🚨 CORREÇÃO CRÍTICA: Se não foi enviado, tentar salvar na fila como fallback
-        console.log('🔄 [MODAL] Tentando salvar na fila como fallback (envio falhou)...');
-        try {
-          const registroFallback: RegistroPresenca = {
-            pessoa_id: `manual_${data.nome.toUpperCase()}`,
-            comum_id: `external_${data.comum.toUpperCase()}_${Date.now()}`,
-            cargo_id: cargoObj.id,
-            instrumento_id: data.instrumento || undefined,
-            classe_organista: data.classe || undefined,
-            local_ensaio: localEnsaio || 'Não definido',
-            data_hora_registro: getCurrentDateTimeISO(),
-            usuario_responsavel: nomeUsuario,
-            status_sincronizacao: 'pending',
-          };
-          
-          await supabaseDataService.saveRegistroToLocal(registroFallback);
-          console.log('✅ [MODAL] Registro salvo na fila como fallback');
-          showToast.warning('Salvo na fila', 'Erro ao enviar. Registro será enviado quando possível.');
-          
-          if (Platform.OS === 'web' && typeof window !== 'undefined') {
-            setTimeout(() => {
-              window.location.reload();
-            }, 2000);
-          }
-          return;
-        } catch (fallbackError) {
-          console.error('❌ [MODAL] Erro crítico ao salvar fallback:', fallbackError);
-        }
-        
-        // Verificar se é erro de duplicata
-        if (result && result.error && result.error.includes('DUPLICATA:')) {
-          // Tratar duplicata (mesmo fluxo do handleSubmit)
-          const errorPart = result.error.split('DUPLICATA:')[1]?.trim() || '';
-          const parts = errorPart.split('|');
-          if (parts.length >= 4) {
-            const nome = parts[0].trim();
-            const comumNome = parts[1].trim();
-            const dataFormatada = parts[2].trim();
-            const horarioFormatado = parts[3].trim();
-            
-            Alert.alert(
-              '⚠️ Cadastro Duplicado!',
-              `${nome} de ${comumNome} já foi cadastrado hoje!\n\nData: ${dataFormatada}\nHorário: ${horarioFormatado}`,
-              [
-                { text: 'Cancelar', style: 'cancel' },
-                {
-                  text: 'Cadastrar Mesmo Assim',
-                  onPress: async () => {
-                    // Forçar criação mesmo com duplicata
-                    const resultForce = await (offlineSyncService as any).createRegistro(registro, true);
-                    if (resultForce.success) {
-                      showToast.success('Registro enviado!', 'Registro duplicado cadastrado com sucesso!');
-                      if (Platform.OS === 'web' && typeof window !== 'undefined') {
-                        setTimeout(() => {
-                          window.location.reload();
-                        }, 1000);
-                      }
-                    } else {
-                      showToast.error('Erro', resultForce.error || 'Erro ao cadastrar registro duplicado');
-                    }
-                  },
-                },
-              ]
-            );
-          } else {
-            showToast.error('Erro', 'Registro duplicado detectado');
-          }
-        } else {
-          // Mostrar erro específico
-          const errorMessage = result?.error || 'Erro ao enviar registro';
-          console.error('❌ [MODAL] Erro ao enviar registro externo:', errorMessage);
-          
-          // 🚨 CORREÇÃO: Se já tentou salvar na fila acima e falhou, mostrar erro
-          // Se não tentou ainda, tentar agora
-          if (!result || result.success !== true) {
-            console.log('🔄 [MODAL] Tentando salvar na fila novamente (última tentativa)...');
-            try {
-              const registroFallback: RegistroPresenca = {
-                pessoa_id: `manual_${data.nome.toUpperCase()}`,
-                comum_id: `external_${data.comum.toUpperCase()}_${Date.now()}`,
-                cargo_id: cargoObj.id,
-                instrumento_id: data.instrumento || undefined,
-                classe_organista: data.classe || undefined,
-                local_ensaio: localEnsaio || 'Não definido',
-                data_hora_registro: getCurrentDateTimeISO(),
-                usuario_responsavel: nomeUsuario,
-                status_sincronizacao: 'pending',
-              };
-              
-              await supabaseDataService.saveRegistroToLocal(registroFallback);
-              console.log('✅ [MODAL] Registro salvo na fila (última tentativa)');
-              showToast.warning('Salvo na fila', 'Erro ao enviar. Registro será enviado quando possível.');
-              
-              if (Platform.OS === 'web' && typeof window !== 'undefined') {
-                setTimeout(() => {
-                  window.location.reload();
-                }, 2000);
-              }
-              return;
-            } catch (finalError) {
-              console.error('❌ [MODAL] Erro crítico final:', finalError);
-              showToast.error('Erro', errorMessage);
-              throw new Error(errorMessage);
-            }
-          } else {
-            showToast.error('Erro', errorMessage);
-            throw new Error(errorMessage);
-          }
-        }
+      // Recarregar página após salvar (aguardar mais tempo para toast aparecer)
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000); // Aumentado de 1500ms para 2000ms para dar tempo do toast aparecer
       }
+      
     } catch (error) {
       console.error('❌ [MODAL] Erro ao salvar novo registro:', error);
       const errorMessage = error instanceof Error ? error.message : 'Erro ao salvar registro. Tente novamente.';
