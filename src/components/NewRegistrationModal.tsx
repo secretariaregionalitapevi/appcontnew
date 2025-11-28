@@ -193,6 +193,7 @@ export const NewRegistrationModal: React.FC<NewRegistrationModalProps> = ({
 
       // 🚨 CRÍTICO: Aguardar resultado do onSave e tratar erros
       try {
+        console.log('🔄 [MODAL] Chamando onSave...');
         await onSave({
           comum: comum.trim(),
           cidade: cidade.trim(),
@@ -202,7 +203,9 @@ export const NewRegistrationModal: React.FC<NewRegistrationModalProps> = ({
           nome: nome.trim(),
         });
 
-        console.log('✅ [MODAL] onSave concluído com sucesso');
+        console.log('✅ [MODAL] onSave concluído - aguardando confirmação de salvamento...');
+        // 🚨 CRÍTICO: Não mostrar sucesso imediatamente - o handleSaveNewRegistration já mostra o toast
+        // Apenas limpar campos e fechar modal
 
         // Limpar campos após salvar (só se não houver erro)
         setComum('');
@@ -213,14 +216,15 @@ export const NewRegistrationModal: React.FC<NewRegistrationModalProps> = ({
         setNome('');
         setErrors({});
         
-        // 🚀 MELHORIA: Exibir toast de sucesso no modal também (garantir feedback visual)
-        showToast.success('Registro salvo com sucesso');
+        // 🚨 CORREÇÃO: NÃO mostrar toast aqui - o handleSaveNewRegistration já mostra
+        // Apenas fechar modal após um delay para permitir que o toast do handleSaveNewRegistration apareça
+        console.log('✅ [MODAL] Campos limpos, aguardando para fechar modal...');
         
         // Fechar modal após sucesso (aguardar um pouco para toast aparecer)
         setTimeout(() => {
           console.log('🚪 [MODAL] Fechando modal após sucesso');
           onClose();
-        }, 2000); // Aumentado de 1500ms para 2000ms para dar tempo do toast aparecer
+        }, 2500); // Aumentado para dar tempo do toast do handleSaveNewRegistration aparecer
       } catch (error) {
         // Erro já foi tratado no handleSaveNewRegistration
         // Não fechar modal se houver erro

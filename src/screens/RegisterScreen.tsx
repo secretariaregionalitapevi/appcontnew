@@ -1364,6 +1364,7 @@ export const RegisterScreen: React.FC = () => {
         userId: user.id,
       });
       
+      console.log('🔄 [MODAL] ========== INICIANDO ENVIO PARA GOOGLE SHEETS ==========');
       console.log('🔄 [MODAL] Chamando sendExternalRegistroToSheet...');
       console.log('🔄 [MODAL] Parâmetros que serão enviados:', {
         nome: data.nome,
@@ -1378,6 +1379,7 @@ export const RegisterScreen: React.FC = () => {
       });
       let result;
       try {
+        console.log('🔄 [MODAL] ANTES de chamar sendExternalRegistroToSheet');
         result = await googleSheetsService.sendExternalRegistroToSheet({
           nome: data.nome,
           comum: data.comum,
@@ -1389,7 +1391,10 @@ export const RegisterScreen: React.FC = () => {
           registradoPor: nomeUsuario,
           userId: user.id,
         });
+        console.log('🔄 [MODAL] DEPOIS de chamar sendExternalRegistroToSheet');
         console.log('📥 [MODAL] Resultado do envio recebido:', result);
+        console.log('📥 [MODAL] Tipo do resultado:', typeof result);
+        console.log('📥 [MODAL] Resultado completo (JSON):', JSON.stringify(result, null, 2));
       } catch (sendError: any) {
         console.error('❌ [MODAL] Erro ao chamar sendExternalRegistroToSheet:', sendError);
         console.error('❌ [MODAL] Detalhes do erro:', {
