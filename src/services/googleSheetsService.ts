@@ -42,18 +42,30 @@ export const googleSheetsService = {
       // 🚨 CORREÇÃO: Usar UUID v4 válido (igual sistema normal), não external_
       const uuid = uuidv4();
 
-      // Determinar instrumento e naipe
+      // 🚨 CORREÇÃO CRÍTICA: Determinar instrumento e naipe baseado no cargo (igual backupcont)
+      // Cargos relacionados a organistas (Examinadora, Instrutora, Organista, Secretária da Música)
+      // sempre devem ter instrumento "ÓRGÃO" e naipe "TECLADO", independente de ter classe ou não
+      const cargoUpper = data.cargo.trim().toUpperCase();
+      const isOrganista = cargoUpper === 'ORGANISTA';
+      const isExaminadora = cargoUpper === 'EXAMINADORA';
+      const isInstrutora = cargoUpper === 'INSTRUTORA' || cargoUpper === 'INSTRUTOR';
+      const isSecretariaMusica = (cargoUpper.includes('SECRETÁRI') || cargoUpper.includes('SECRETARI')) && 
+                                  (cargoUpper.includes('MÚSICA') || cargoUpper.includes('MUSICA'));
+      const isOrganistaOuRelacionado = isOrganista || isExaminadora || isInstrutora || isSecretariaMusica;
+      
       let instrumentoFinal = '';
       let naipeFinal = '';
       
-      if (data.classe) {
-        // Se tem classe, é organista ou cargo com classe oficializada
+      if (isOrganistaOuRelacionado) {
+        // 🚨 CRÍTICO: Cargos relacionados a organistas sempre têm instrumento "ÓRGÃO"
         instrumentoFinal = 'ÓRGÃO';
         naipeFinal = 'TECLADO';
       } else if (data.instrumento) {
+        // Para outros cargos (ex: Músico), usar o instrumento fornecido
         instrumentoFinal = data.instrumento.toUpperCase();
         naipeFinal = getNaipeByInstrumento(data.instrumento).toUpperCase();
       }
+      // Se não é organista/relacionado e não tem instrumento, deixa vazio (ex: Encarregado Local, Ancião)
 
       // Formato esperado pelo Google Apps Script (igual ao backupcont)
       const sheetRow = {
