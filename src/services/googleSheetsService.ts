@@ -111,6 +111,13 @@ export const googleSheetsService = {
       console.log('🔄 [EXTERNAL] Local de ensaio original:', data.localEnsaio);
       console.log('🔄 [EXTERNAL] Local de ensaio convertido:', localEnsaioConvertido);
       
+      // 🚨 CRÍTICO: Garantir que TODOS os cargos sejam enviados, sem validação especial
+      // Músico, Organista, Examinadora, Instrutor, Encarregado Local, etc. - todos devem funcionar igual
+      console.log('📋 [EXTERNAL] Preparando dados para envio - TODOS os cargos são aceitos');
+      console.log('📋 [EXTERNAL] Cargo que será enviado:', data.cargo.trim().toUpperCase());
+      console.log('📋 [EXTERNAL] Instrumento final:', instrumentoFinal || '(vazio - OK para cargos sem instrumento)');
+      console.log('📋 [EXTERNAL] Naipe final:', naipeFinal || '(vazio - OK para cargos sem instrumento)');
+      
       // Formato esperado pelo Google Apps Script (igual ao backupcont)
       const sheetRow = {
         UUID: uuid,
@@ -140,20 +147,24 @@ export const googleSheetsService = {
         SYNC_STATUS: 'ATUALIZADO',
       };
 
-      console.log('📤 [EXTERNAL] Dados formatados para Google Sheets:', sheetRow);
+      console.log('📤 [EXTERNAL] ========== DADOS FINAIS PARA ENVIO ==========');
       console.log('📤 [EXTERNAL] UUID gerado:', uuid);
-      console.log('📤 [EXTERNAL] Cargo recebido:', data.cargo);
-      console.log('📤 [EXTERNAL] Cargo no sheetRow:', sheetRow.CARGO);
-      console.log('📤 [EXTERNAL] Instrumento recebido:', data.instrumento);
-      console.log('📤 [EXTERNAL] Classe recebida:', data.classe);
-      console.log('📤 [EXTERNAL] Instrumento final:', instrumentoFinal);
-      console.log('📤 [EXTERNAL] Naipe final:', naipeFinal);
-      console.log('📤 [EXTERNAL] CLASSE_ORGANISTA no sheetRow:', sheetRow.CLASSE_ORGANISTA);
-      console.log('📤 [EXTERNAL] LOCAL_ENSAIO original:', data.localEnsaio);
-      console.log('📤 [EXTERNAL] LOCAL_ENSAIO convertido:', localEnsaioConvertido);
-      console.log('📤 [EXTERNAL] LOCAL_ENSAIO no sheetRow:', sheetRow.LOCAL_ENSAIO);
+      console.log('📤 [EXTERNAL] NOME COMPLETO:', sheetRow['NOME COMPLETO']);
+      console.log('📤 [EXTERNAL] COMUM:', sheetRow.COMUM);
+      console.log('📤 [EXTERNAL] CIDADE:', sheetRow.CIDADE);
+      console.log('📤 [EXTERNAL] CARGO:', sheetRow.CARGO, '✅ (qualquer cargo é aceito)');
+      console.log('📤 [EXTERNAL] INSTRUMENTO:', sheetRow.INSTRUMENTO || '(vazio - OK para cargos sem instrumento)');
+      console.log('📤 [EXTERNAL] NAIPE_INSTRUMENTO:', sheetRow.NAIPE_INSTRUMENTO || '(vazio - OK)');
+      console.log('📤 [EXTERNAL] CLASSE_ORGANISTA:', sheetRow.CLASSE_ORGANISTA || '(vazio - OK)');
+      console.log('📤 [EXTERNAL] LOCAL_ENSAIO:', sheetRow.LOCAL_ENSAIO);
+      console.log('📤 [EXTERNAL] DATA_ENSAIO:', sheetRow.DATA_ENSAIO);
+      console.log('📤 [EXTERNAL] HORÁRIO:', sheetRow.HORÁRIO);
+      console.log('📤 [EXTERNAL] REGISTRADO_POR:', sheetRow.REGISTRADO_POR);
+      console.log('📤 [EXTERNAL] ANOTACOES:', sheetRow.ANOTACOES);
+      console.log('📤 [EXTERNAL] SYNC_STATUS:', sheetRow.SYNC_STATUS);
       console.log('📤 [EXTERNAL] URL da API:', GOOGLE_SHEETS_API_URL);
       console.log('📤 [EXTERNAL] Nome da planilha:', SHEET_NAME);
+      console.log('📤 [EXTERNAL] ============================================');
 
       // 🚨 CORREÇÃO CRÍTICA: Não usar AbortController com no-cors
       // O backupcont não usa timeout explícito no fetch do modal
@@ -259,11 +270,15 @@ export const googleSheetsService = {
           if (responseJson && responseJson.ok === true) {
             console.log('✅ [EXTERNAL] Google Sheets: Dados enviados com sucesso (JSON ok: true)');
             console.log('✅ [EXTERNAL] UUID retornado:', responseJson.uuid);
-            return { success: true };
+            console.log('✅ [EXTERNAL] Operação:', responseJson.op);
+            console.log('✅ [EXTERNAL] Registros inseridos:', responseJson.inserted);
+            console.log('✅ [EXTERNAL] Cargo que foi salvo:', sheetRow.CARGO);
+            return { success: true, uuid: responseJson.uuid };
           }
           
           console.log('✅ [EXTERNAL] Google Sheets: Dados enviados com sucesso (status OK)');
           console.log('✅ [EXTERNAL] Corpo da resposta confirmado:', responseBody.substring(0, 100));
+          console.log('✅ [EXTERNAL] Cargo que foi salvo:', sheetRow.CARGO);
           console.log('✅ [EXTERNAL] Retornando { success: true }');
           return { success: true };
         }
