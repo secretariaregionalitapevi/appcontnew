@@ -1306,6 +1306,62 @@ export const RegisterScreen: React.FC = () => {
         cidade: data.cidade, // Adicionar cidade ao registro
       };
 
+      // 🚨 CRÍTICO: Verificar se está offline ANTES de tentar enviar
+      const isOfflineNow = !(await offlineSyncService.isOnline());
+      console.log('🌐 [MODAL] Status de conexão:', isOfflineNow ? 'OFFLINE' : 'ONLINE');
+      
+      if (isOfflineNow) {
+        // 🚨 CORREÇÃO CRÍTICA: Se offline, salvar na fila local (igual backupcont)
+        console.log('📴 [MODAL] Modo offline detectado - salvando na fila local');
+        
+        // Criar dados no formato esperado pela fila
+        const dadosModal = {
+          UUID: generateExternalUUID(),
+          'NOME COMPLETO': data.nome.trim().toUpperCase(),
+          COMUM: data.comum.trim().toUpperCase(),
+          CIDADE: data.cidade.trim().toUpperCase(),
+          CARGO: cargoObj.nome.trim().toUpperCase(),
+          INSTRUMENTO: instrumentoObj?.nome ? instrumentoObj.nome.toUpperCase() : '',
+          NAIPE_INSTRUMENTO: instrumentoObj?.nome ? getNaipeByInstrumento(instrumentoObj.nome).toUpperCase() : '',
+          CLASSE_ORGANISTA: (data.classe || '').toUpperCase(),
+          LOCAL_ENSAIO: (localEnsaio || 'Não definido').toUpperCase(),
+          DATA_ENSAIO: new Date().toLocaleDateString('pt-BR'),
+          HORÁRIO: new Date().toLocaleTimeString('pt-BR', {
+            timeZone: 'America/Sao_Paulo',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false,
+          }),
+          REGISTRADO_POR: nomeUsuario.toUpperCase(),
+          USER_ID: user.id,
+          ANOTACOES: 'Cadastro fora da Regional',
+          SYNC_STATUS: 'PENDING',
+        };
+        
+        // Salvar na fila usando o mesmo método do backupcont
+        try {
+          const fila = JSON.parse(localStorage.getItem('fila_envio') || '[]');
+          fila.push(dadosModal);
+          localStorage.setItem('fila_envio', JSON.stringify(fila));
+          console.log('✅ [MODAL] Registro salvo na fila offline:', dadosModal);
+          
+          showToast.success('Salvo offline', 'Registro será enviado quando voltar online');
+          
+          // Recarregar página após salvar
+          if (Platform.OS === 'web' && typeof window !== 'undefined') {
+            setTimeout(() => {
+              window.location.reload();
+            }, 2000);
+          }
+          return;
+        } catch (filaError) {
+          console.error('❌ [MODAL] Erro ao salvar na fila:', filaError);
+          showToast.error('Erro', 'Erro ao salvar registro offline. Tente novamente.');
+          throw filaError;
+        }
+      }
+      
       // 🚨 CRÍTICO: Para registros externos (modal de novo registro), enviar DIRETAMENTE para Google Sheets
       // NÃO usar createRegistro que tenta validar contra listas locais
       // Seguir o mesmo padrão do backupcont: enviar direto para Google Sheets, NÃO para Supabase
@@ -1323,21 +1379,62 @@ export const RegisterScreen: React.FC = () => {
       });
       
       console.log('🔄 [MODAL] Chamando sendExternalRegistroToSheet...');
-      const result = await googleSheetsService.sendExternalRegistroToSheet({
-        nome: data.nome,
-        comum: data.comum,
-        cidade: data.cidade,
-        cargo: cargoObj.nome, // Usar nome do cargo encontrado
-        instrumento: instrumentoObj?.nome,
-        classe: data.classe,
-        localEnsaio: localEnsaio || 'Não definido',
-        registradoPor: nomeUsuario,
-        userId: user.id,
-      });
+      let result;
+      try {
+        result = await googleSheetsService.sendExternalRegistroToSheet({
+          nome: data.nome,
+          comum: data.comum,
+          cidade: data.cidade,
+          cargo: cargoObj.nome, // Usar nome do cargo encontrado
+          instrumento: instrumentoObj?.nome,
+          classe: data.classe,
+          localEnsaio: localEnsaio || 'Não definido',
+          registradoPor: nomeUsuario,
+          userId: user.id,
+        });
+        console.log('📥 [MODAL] Resultado do envio recebido:', result);
+      } catch (sendError: any) {
+        console.error('❌ [MODAL] Erro ao chamar sendExternalRegistroToSheet:', sendError);
+        // Se falhou, tentar salvar na fila como fallback
+        console.log('🔄 [MODAL] Tentando salvar na fila como fallback...');
+        const dadosModal = {
+          UUID: generateExternalUUID(),
+          'NOME COMPLETO': data.nome.trim().toUpperCase(),
+          COMUM: data.comum.trim().toUpperCase(),
+          CIDADE: data.cidade.trim().toUpperCase(),
+          CARGO: cargoObj.nome.trim().toUpperCase(),
+          INSTRUMENTO: instrumentoObj?.nome ? instrumentoObj.nome.toUpperCase() : '',
+          NAIPE_INSTRUMENTO: instrumentoObj?.nome ? getNaipeByInstrumento(instrumentoObj.nome).toUpperCase() : '',
+          CLASSE_ORGANISTA: (data.classe || '').toUpperCase(),
+          LOCAL_ENSAIO: (localEnsaio || 'Não definido').toUpperCase(),
+          DATA_ENSAIO: new Date().toLocaleDateString('pt-BR'),
+          HORÁRIO: new Date().toLocaleTimeString('pt-BR', {
+            timeZone: 'America/Sao_Paulo',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false,
+          }),
+          REGISTRADO_POR: nomeUsuario.toUpperCase(),
+          USER_ID: user.id,
+          ANOTACOES: 'Cadastro fora da Regional',
+          SYNC_STATUS: 'PENDING',
+        };
+        const fila = JSON.parse(localStorage.getItem('fila_envio') || '[]');
+        fila.push(dadosModal);
+        localStorage.setItem('fila_envio', JSON.stringify(fila));
+        showToast.warning('Salvo na fila', 'Erro ao enviar. Registro será enviado quando possível.');
+        if (Platform.OS === 'web' && typeof window !== 'undefined') {
+          setTimeout(() => {
+            window.location.reload();
+          }, 2000);
+        }
+        return;
+      }
       
       console.log('📥 [MODAL] Resultado do envio:', result);
-      console.log('📥 [MODAL] result.success:', result.success);
-      console.log('📥 [MODAL] result.error:', result.error);
+      console.log('📥 [MODAL] result.success:', result?.success);
+      console.log('📥 [MODAL] result.error:', result?.error);
       
       if (result.success) {
         console.log('✅ [MODAL] Registro enviado com sucesso para Google Sheets');
