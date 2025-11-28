@@ -1036,7 +1036,14 @@ export const supabaseDataService = {
               // O cargo real será capturado do banco de dados quando o registro for salvo.
               filteredData = filteredData.filter(item => {
                 const itemInstrumento = (item.instrumento || '').toUpperCase();
-                const matchesInstrumento = variacoesBusca.some(v => itemInstrumento.includes(v));
+                // 🚨 CORREÇÃO: Normalizar acentos antes de comparar para encontrar instrumentos mesmo com variações de acentuação
+                const itemInstrumentoNormalizado = normalizeString(itemInstrumento);
+                const matchesInstrumento = variacoesBusca.some(v => {
+                  const variacaoNormalizada = normalizeString(v);
+                  return itemInstrumentoNormalizado.includes(variacaoNormalizada) || 
+                         itemInstrumento.includes(v) || // Fallback: comparação direta também
+                         variacaoNormalizada.includes(itemInstrumentoNormalizado);
+                });
                 // Não filtrar por cargo aqui - incluir TODOS que tocam o instrumento
                 return matchesInstrumento;
               });

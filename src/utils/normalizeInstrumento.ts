@@ -4,6 +4,8 @@
  * Baseado na lógica do backupcont
  */
 
+import { normalizeString } from './stringNormalization';
+
 /**
  * Expande abreviações comuns de instrumentos
  * Exemplos:
@@ -92,6 +94,12 @@ export function expandInstrumentoSearch(instrumento: string): string[] {
     variations.push('SAXOFONE SOPRANORETO');
   }
 
+  // 🚨 CORREÇÃO: Para EUFÔNIO, adicionar variações com e sem acento
+  if (instrumentoUpper.includes('EUFÔNIO') || instrumentoUpper.includes('EUFONIO')) {
+    variations.push('EUFÔNIO');
+    variations.push('EUFONIO');
+  }
+
   // Se contém "RETO", adicionar variação com "RET" (para buscar no banco que pode ter abreviação)
   if (normalized.includes('RETO')) {
     variations.push(normalized.replace(/RETO/g, 'RET'));
@@ -104,6 +112,12 @@ export function expandInstrumentoSearch(instrumento: string): string[] {
     variations.push(normalized.replace(/\bRET\b/g, 'RETO'));
     variations.push(normalized.replace(/\bRET\b/g, '(RETO)'));
   }
+
+  // 🚨 CORREÇÃO CRÍTICA: Adicionar versões normalizadas (sem acentos) de TODAS as variações
+  // Isso garante que a busca no Supabase encontre instrumentos mesmo que estejam escritos com ou sem acentos no banco
+  // Seguindo a mesma lógica usada para candidatos
+  const variationsNormalized = variations.map(v => normalizeString(v));
+  variations.push(...variationsNormalized);
 
   // Remover duplicatas e retornar
   return [...new Set(variations)];
