@@ -271,6 +271,23 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
   // Quando o campo perde foco
   const handleBlur = () => {
     setIsFocused(false);
+    
+    // 🚨 CORREÇÃO CRÍTICA: Se há texto digitado que não corresponde a nenhuma opção, tratar como manual
+    if (searchText.trim() && !isManualMode) {
+      const textoNormalizado = normalize(searchText);
+      const encontrouNaLista = options.some(opt => {
+        const labelNorm = normalize(opt.label);
+        return labelNorm === textoNormalizado;
+      });
+      
+      // Se não encontrou na lista e há texto, é nome manual
+      if (!encontrouNaLista) {
+        console.log('📝 [NameSelectField] Texto digitado não encontrado na lista, tratando como manual:', searchText);
+        setIsManualMode(true);
+        onSelect({ id: 'manual', label: searchText.trim(), value: searchText.trim() });
+      }
+    }
+    
     // Delay muito maior no web para permitir clique com mouse
     // O mouse precisa de mais tempo porque o blur acontece antes do click
     const delay = Platform.OS === 'web' ? 500 : Platform.OS === 'android' ? 500 : 300;
@@ -332,7 +349,10 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
   // Handler para Enter/Submit
   const handleEnterPress = () => {
     if (isManualMode) {
-      // Em modo manual, apenas blur
+      // Em modo manual, confirmar o texto digitado
+      if (searchText.trim()) {
+        onSelect({ id: 'manual', label: searchText.trim(), value: searchText.trim() });
+      }
       if (inputRef.current) {
         inputRef.current.blur();
       }
@@ -344,6 +364,22 @@ export const NameSelectField: React.FC<NameSelectFieldProps> = ({
       const optionToSelect = filtered[indexToSelect];
       if (optionToSelect) {
         handleSelect(optionToSelect);
+      }
+    } else if (searchText.trim()) {
+      // 🚨 CORREÇÃO CRÍTICA: Se não há opções filtradas mas há texto digitado, tratar como manual
+      const textoNormalizado = normalize(searchText);
+      const encontrouNaLista = options.some(opt => {
+        const labelNorm = normalize(opt.label);
+        return labelNorm === textoNormalizado;
+      });
+      
+      if (!encontrouNaLista) {
+        console.log('📝 [NameSelectField] Enter pressionado com texto não encontrado na lista, tratando como manual:', searchText);
+        setIsManualMode(true);
+        onSelect({ id: 'manual', label: searchText.trim(), value: searchText.trim() });
+        if (inputRef.current) {
+          inputRef.current.blur();
+        }
       }
     }
   };
