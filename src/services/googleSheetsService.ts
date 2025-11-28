@@ -125,10 +125,38 @@ export const googleSheetsService = {
         console.log('📥 [EXTERNAL] Response OK:', response.ok);
         console.log('📥 [EXTERNAL] Response headers:', response.headers);
 
+        // 🚨 CORREÇÃO CRÍTICA: Ler o corpo da resposta ANTES de verificar response.ok
+        // Isso permite verificar se há erros silenciosos mesmo com status OK
+        // Usar clone() para não consumir o stream original
+        let responseBody = '';
+        try {
+          const responseClone = response.clone();
+          responseBody = await responseClone.text();
+          console.log('📥 [EXTERNAL] Corpo da resposta:', responseBody);
+          console.log('📥 [EXTERNAL] Tamanho da resposta:', responseBody.length);
+        } catch (readBodyError) {
+          console.warn('⚠️ [EXTERNAL] Não foi possível ler corpo da resposta:', readBodyError);
+        }
+
         // 🚨 CORREÇÃO CRÍTICA: Verificar response.ok PRIMEIRO (igual backupcont)
         // O backupcont só verifica response.ok, não verifica response.type
         if (response.ok) {
+          // 🚨 VERIFICAÇÃO ADICIONAL: Verificar se a resposta contém erro
+          // Mesmo com status OK, o Google Apps Script pode retornar erro no corpo
+          if (responseBody && (
+            responseBody.toLowerCase().includes('error') ||
+            responseBody.toLowerCase().includes('erro') ||
+            responseBody.toLowerCase().includes('falha') ||
+            responseBody.toLowerCase().includes('rejeitado') ||
+            responseBody.toLowerCase().includes('invalid') ||
+            responseBody.toLowerCase().includes('inválido')
+          )) {
+            console.error('❌ [EXTERNAL] Resposta OK mas contém erro no corpo:', responseBody);
+            throw new Error(`Google Sheets retornou erro: ${responseBody}`);
+          }
+          
           console.log('✅ [EXTERNAL] Google Sheets: Dados enviados com sucesso (status OK)');
+          console.log('✅ [EXTERNAL] Retornando { success: true }');
           return { success: true };
         }
 
