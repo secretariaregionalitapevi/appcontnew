@@ -110,63 +110,79 @@ if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof document !=
       }
       
       /* Modal (para erros importantes) */
-      .swal2-popup:not(.swal2-toast) {
+      .swal2-popup:not(.swal2-toast),
+      .swal2-popup-error-elegant {
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
         font-size: 15px !important;
-        border-radius: 12px !important;
-        padding: 1.5rem !important;
+        border-radius: 16px !important;
+        padding: 2rem !important;
         max-width: 420px !important;
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2) !important;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 0, 0, 0.05) !important;
+        border: none !important;
       }
-      .swal2-popup:not(.swal2-toast) .swal2-title {
-        font-size: 18px !important;
-        font-weight: 600 !important;
-        color: #111827 !important;
-        line-height: 1.4 !important;
-        margin-bottom: 0.75rem !important;
-        padding: 0 !important;
-      }
-      .swal2-popup:not(.swal2-toast) .swal2-content {
-        font-size: 14px !important;
-        font-weight: 400 !important;
-        color: #4b5563 !important;
-        line-height: 1.6 !important;
+      .swal2-popup:not(.swal2-toast) .swal2-title,
+      .swal2-title-error-elegant {
+        font-size: 20px !important;
+        font-weight: 700 !important;
+        color: #1f2937 !important;
+        line-height: 1.3 !important;
+        margin-bottom: 1rem !important;
         margin-top: 0 !important;
         padding: 0 !important;
+        text-align: center !important;
+      }
+      .swal2-popup:not(.swal2-toast) .swal2-content,
+      .swal2-content-error-elegant {
+        font-size: 15px !important;
+        font-weight: 400 !important;
+        color: #6b7280 !important;
+        line-height: 1.6 !important;
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
+        padding: 0 !important;
+        text-align: center !important;
       }
       .swal2-popup:not(.swal2-toast) .swal2-icon {
-        width: 64px !important;
-        height: 64px !important;
-        margin-bottom: 1rem !important;
-        border-width: 4px !important;
+        width: 80px !important;
+        height: 80px !important;
+        margin: 0 auto 1.5rem auto !important;
+        border-width: 0 !important;
+        background-color: transparent !important;
       }
-      /* Garantir que o ícone de erro (X) seja visível e bem definido */
+      /* Ícone de erro elegante e bem visível */
       .swal2-popup:not(.swal2-toast) .swal2-icon.swal2-error,
       .swal2-icon-error-visible {
-        border-color: #ef4444 !important;
-        color: #ef4444 !important;
-        background-color: transparent !important;
+        border: none !important;
+        background-color: #fee2e2 !important;
+        border-radius: 50% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
       }
       .swal2-popup:not(.swal2-toast) .swal2-icon.swal2-error .swal2-x-mark,
       .swal2-icon-error-visible .swal2-x-mark {
         position: relative !important;
         width: 100% !important;
         height: 100% !important;
-        display: block !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex-shrink: 0 !important;
       }
       .swal2-popup:not(.swal2-toast) .swal2-icon.swal2-error .swal2-x-mark-line,
       .swal2-icon-error-visible .swal2-x-mark-line {
         position: absolute !important;
-        height: 5px !important;
-        width: 32px !important;
-        background-color: #ef4444 !important;
+        height: 4px !important;
+        width: 36px !important;
+        background-color: #dc2626 !important;
         border-radius: 2px !important;
         top: 50% !important;
         left: 50% !important;
-        margin-left: -16px !important;
-        margin-top: -2.5px !important;
+        margin-left: -18px !important;
+        margin-top: -2px !important;
         opacity: 1 !important;
         visibility: visible !important;
+        transform-origin: center !important;
       }
       .swal2-popup:not(.swal2-toast) .swal2-icon.swal2-error .swal2-x-mark-line-left,
       .swal2-icon-error-visible .swal2-x-mark-line-left {
@@ -176,19 +192,29 @@ if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof document !=
       .swal2-icon-error-visible .swal2-x-mark-line-right {
         transform: rotate(-45deg) !important;
       }
-      .swal2-popup:not(.swal2-toast) .swal2-confirm {
+      .swal2-popup:not(.swal2-toast) .swal2-confirm,
+      .swal2-confirm-error-elegant {
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
-        font-size: 14px !important;
-        font-weight: 500 !important;
-        padding: 0.625rem 1.5rem !important;
-        border-radius: 8px !important;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+        font-size: 15px !important;
+        font-weight: 600 !important;
+        padding: 0.75rem 2rem !important;
+        border-radius: 10px !important;
+        box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3) !important;
         transition: all 0.2s ease !important;
-        margin-top: 1rem !important;
+        margin-top: 1.5rem !important;
+        background-color: #dc2626 !important;
+        border: none !important;
+        min-width: 120px !important;
       }
-      .swal2-popup:not(.swal2-toast) .swal2-confirm:hover {
-        transform: translateY(-1px) !important;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15) !important;
+      .swal2-popup:not(.swal2-toast) .swal2-confirm:hover,
+      .swal2-confirm-error-elegant:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 6px 16px rgba(220, 38, 38, 0.4) !important;
+        background-color: #b91c1c !important;
+      }
+      .swal2-popup:not(.swal2-toast) .swal2-confirm:active,
+      .swal2-confirm-error-elegant:active {
+        transform: translateY(0) !important;
       }
     `;
     document.head.appendChild(customStyle);
@@ -258,27 +284,31 @@ export const showToast = {
 
   error: (title: string, message?: string) => {
     if (Platform.OS === 'web') {
-      // 🚀 MELHORIA: Modal de erro compacto e elegante com ícone visível
+      // 🚀 MELHORIA: Modal de erro elegante e bem formatado
       const Swal = getSwal();
       if (Swal) {
         Swal.fire({
           icon: 'error',
-          iconColor: '#ef4444',
+          iconColor: '#dc2626',
           title: title,
           text: message || '',
-          timer: 4000,
+          timer: 5000,
           timerProgressBar: true,
           showConfirmButton: true,
           confirmButtonText: 'OK',
-          confirmButtonColor: '#ef4444',
+          confirmButtonColor: '#dc2626',
           toast: false, // Modal para erros importantes
           position: 'center',
-          padding: '1.5rem',
+          padding: '2rem',
+          width: '420px',
+          backdrop: true,
+          allowOutsideClick: true,
+          allowEscapeKey: true,
           customClass: {
-            popup: 'swal2-popup-compact',
-            title: 'swal2-title-compact',
-            content: 'swal2-content-compact',
-            confirmButton: 'swal2-confirm-compact',
+            popup: 'swal2-popup-error-elegant',
+            title: 'swal2-title-error-elegant',
+            content: 'swal2-content-error-elegant',
+            confirmButton: 'swal2-confirm-error-elegant',
             icon: 'swal2-icon-error-visible',
           },
         });
