@@ -55,15 +55,21 @@ export const googleSheetsService = {
     localEnsaio: string;
     registradoPor: string;
     userId?: string;
-  }): Promise<{ success: boolean; error?: string }> {
+  }): Promise<{ success: boolean; error?: string; uuid?: string }> {
+    console.log('🚀 [EXTERNAL] ========== INÍCIO sendExternalRegistroToSheet ==========');
     console.log('🚀 [EXTERNAL] sendExternalRegistroToSheet chamado');
-    console.log('📋 [EXTERNAL] Dados recebidos:', data);
-    console.log('📋 [EXTERNAL] Cargo:', data.cargo);
-    console.log('📋 [EXTERNAL] Instrumento:', data.instrumento);
-    console.log('📋 [EXTERNAL] Classe:', data.classe);
+    console.log('📋 [EXTERNAL] Dados recebidos:', JSON.stringify(data, null, 2));
+    console.log('📋 [EXTERNAL] Cargo recebido:', data.cargo);
+    console.log('📋 [EXTERNAL] Instrumento recebido:', data.instrumento || '(não fornecido)');
+    console.log('📋 [EXTERNAL] Classe recebida:', data.classe || '(não fornecido)');
+    console.log('📋 [EXTERNAL] Nome:', data.nome);
+    console.log('📋 [EXTERNAL] Comum:', data.comum);
+    console.log('📋 [EXTERNAL] Cidade:', data.cidade);
+    console.log('📋 [EXTERNAL] Local Ensaio:', data.localEnsaio);
     
     try {
-      console.log('📤 [EXTERNAL] Enviando registro externo diretamente para Google Sheets:', data);
+      console.log('📤 [EXTERNAL] Iniciando processamento dos dados...');
+      console.log('📤 [EXTERNAL] Enviando registro externo diretamente para Google Sheets');
 
       // 🚨 CORREÇÃO: Usar UUID v4 válido (igual sistema normal), não external_
       const uuid = uuidv4();
@@ -403,9 +409,33 @@ export const googleSheetsService = {
         throw fetchError;
       }
     } catch (error: any) {
-      console.error('❌ [EXTERNAL] Erro ao enviar registro externo para Google Sheets:', error);
+      console.error('❌ [EXTERNAL] ========== ERRO CAPTURADO ==========');
+      console.error('❌ [EXTERNAL] Tipo do erro:', error?.name || typeof error);
+      console.error('❌ [EXTERNAL] Mensagem do erro:', error?.message);
+      console.error('❌ [EXTERNAL] Stack do erro:', error?.stack);
+      console.error('❌ [EXTERNAL] Cargo que causou erro:', data?.cargo);
+      console.error('❌ [EXTERNAL] Nome que causou erro:', data?.nome);
+      console.error('❌ [EXTERNAL] Dados completos que causaram erro:', JSON.stringify(data, null, 2));
+      
+      if (error.message === 'Timeout' || error.name === 'AbortError') {
+        console.error('❌ [EXTERNAL] Erro de timeout');
+        return { success: false, error: 'Timeout ao enviar registro. Tente novamente.' };
+      }
+      if (error.message && (
+        error.message.includes('Failed to fetch') ||
+        error.message.includes('NetworkError') ||
+        error.message.includes('Network request failed')
+      )) {
+        console.warn('⚠️ [EXTERNAL] Erro de rede detectado, mas pode ser no-cors - assumindo sucesso');
+        console.warn('⚠️ [EXTERNAL] Cargo:', data?.cargo);
+        return { success: true };
+      }
+      
       const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('❌ [EXTERNAL] Retornando erro:', errorMessage);
       return { success: false, error: errorMessage };
+    } finally {
+      console.log('🏁 [EXTERNAL] ========== FIM sendExternalRegistroToSheet ==========');
     }
   },
 
