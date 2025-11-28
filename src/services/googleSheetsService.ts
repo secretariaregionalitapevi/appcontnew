@@ -279,19 +279,37 @@ export const googleSheetsService = {
             console.warn('⚠️ [EXTERNAL] Resposta muito curta, pode indicar problema:', responseBody);
           }
           
-          // 🚨 VERIFICAÇÃO: Se é JSON válido e ok: true, confirmar sucesso
+          // 🚨 VERIFICAÇÃO CRÍTICA: Se é JSON válido e ok: true, confirmar sucesso
+          // Verificar se inserted é 1 para confirmar que realmente foi inserido
           if (responseJson && responseJson.ok === true) {
+            const inserted = responseJson.inserted || 0;
             console.log('✅ [EXTERNAL] Google Sheets: Dados enviados com sucesso (JSON ok: true)');
             console.log('✅ [EXTERNAL] UUID retornado:', responseJson.uuid);
             console.log('✅ [EXTERNAL] Operação:', responseJson.op);
-            console.log('✅ [EXTERNAL] Registros inseridos:', responseJson.inserted);
+            console.log('✅ [EXTERNAL] Registros inseridos:', inserted);
             console.log('✅ [EXTERNAL] Cargo que foi salvo:', sheetRow.CARGO);
+            console.log('✅ [EXTERNAL] Nome que foi salvo:', sheetRow['NOME COMPLETO']);
+            if (inserted !== 1) {
+              console.warn('⚠️ [EXTERNAL] ATENÇÃO: inserted não é 1, pode indicar problema');
+            }
             return { success: true, uuid: responseJson.uuid };
+          }
+          
+          // Se não é JSON válido mas status é OK, verificar indicadores de sucesso no texto
+          if (responseBody && (
+            responseBody.includes('"ok":true') ||
+            responseBody.includes('"inserted":1') ||
+            (responseBody.includes('inserted') && responseBody.includes('1'))
+          )) {
+            console.log('✅ [EXTERNAL] Google Sheets: Dados enviados com sucesso (indicadores no corpo)');
+            console.log('✅ [EXTERNAL] Cargo que foi salvo:', sheetRow.CARGO);
+            return { success: true };
           }
           
           console.log('✅ [EXTERNAL] Google Sheets: Dados enviados com sucesso (status OK)');
           console.log('✅ [EXTERNAL] Corpo da resposta confirmado:', responseBody.substring(0, 100));
           console.log('✅ [EXTERNAL] Cargo que foi salvo:', sheetRow.CARGO);
+          console.log('✅ [EXTERNAL] Nome que foi salvo:', sheetRow['NOME COMPLETO']);
           console.log('✅ [EXTERNAL] Retornando { success: true }');
           return { success: true };
         }

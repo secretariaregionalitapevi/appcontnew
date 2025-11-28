@@ -86,13 +86,13 @@ export const NewRegistrationModal: React.FC<NewRegistrationModalProps> = ({
   // Mostrar campo de classe APENAS para Organista (outros cargos são oficializados automaticamente)
   const showClasse = isOrganista && !isCargoOficializadaAutomatica;
 
-  // Opções de classe
+  // Opções de classe - Reordenado: Oficializada primeiro, Ensaio por último
   const classesOptions = [
-    { id: 'Ensaio', label: 'Ensaio', value: 'Ensaio' },
-    { id: 'Meia-Hora', label: 'Meia-Hora', value: 'Meia-Hora' },
-    { id: 'RDJM', label: 'RDJM', value: 'RDJM' },
-    { id: 'Culto a Noite', label: 'Culto a Noite', value: 'Culto a Noite' },
     { id: 'Oficializada', label: 'Oficializada', value: 'Oficializada' },
+    { id: 'Culto a Noite', label: 'Culto a Noite', value: 'Culto a Noite' },
+    { id: 'RDJM', label: 'RDJM', value: 'RDJM' },
+    { id: 'Meia-Hora', label: 'Meia-Hora', value: 'Meia-Hora' },
+    { id: 'Ensaio', label: 'Ensaio', value: 'Ensaio' },
   ];
 
   // 🚨 CARGOS ESPECÍFICOS PARA O MODAL DE NOVO REGISTRO
