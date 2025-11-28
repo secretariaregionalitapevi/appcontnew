@@ -109,14 +109,14 @@ export const showToast = {
     const finalTitle = message ? title : '';
     
     if (Platform.OS === 'web') {
-      // Usar SweetAlert2 na web - versão mais elegante e rápida
+      // 🚀 MELHORIA: Toast de sucesso mais rápido e elegante
       const Swal = getSwal();
       if (Swal) {
         Swal.fire({
           icon: 'success',
           title: finalTitle || finalMessage,
           text: finalTitle ? finalMessage : '',
-          timer: 2000,
+          timer: 1500, // Reduzido de 2000 para 1500ms (mais rápido)
           timerProgressBar: false,
           showConfirmButton: false,
           toast: true,
@@ -141,7 +141,7 @@ export const showToast = {
           text1: finalTitle || finalMessage,
           text2: finalTitle ? finalMessage : undefined,
           position: 'top',
-          visibilityTime: 2000,
+          visibilityTime: 1500, // Reduzido de 2000 para 1500ms (mais rápido)
           autoHide: true,
           topOffset: Platform.OS === 'ios' ? 60 : 50,
           text1Style: { fontSize: 14, fontWeight: '600' },
@@ -163,18 +163,20 @@ export const showToast = {
 
   error: (title: string, message?: string) => {
     if (Platform.OS === 'web') {
-      // Usar SweetAlert2 na web
+      // 🚀 MELHORIA: Toast de erro mais elegante e informativo
       const Swal = getSwal();
       if (Swal) {
         Swal.fire({
           icon: 'error',
           title: title,
           text: message || '',
-          timer: 5000,
+          timer: 4000, // Reduzido de 5000 para 4000ms (mais rápido)
           timerProgressBar: true,
           showConfirmButton: true,
           confirmButtonText: 'OK',
           confirmButtonColor: '#ef4444',
+          toast: false, // Modal para erros importantes
+          position: 'center',
         });
       } else {
         // Fallback para alert nativo
@@ -189,7 +191,7 @@ export const showToast = {
         text1: title,
         text2: message,
         position: 'top',
-        visibilityTime: 4000,
+        visibilityTime: 3500, // Reduzido de 4000 para 3500ms (mais rápido)
         autoHide: true,
         topOffset: Platform.OS === 'ios' ? 50 : 40,
         text1Style: { fontSize: 14, fontWeight: '600' },
@@ -274,6 +276,56 @@ export const showToast = {
       });
     } else {
       Alert.alert(title, message || '');
+    }
+  },
+
+  // 🚀 NOVO: Toast de progresso para envio de registros
+  progress: (title: string, message?: string) => {
+    if (Platform.OS === 'web') {
+      const Swal = getSwal();
+      if (Swal) {
+        Swal.fire({
+          icon: 'info',
+          title: title,
+          text: message || 'Aguarde...',
+          timer: 15000, // 15 segundos (tempo máximo esperado)
+          timerProgressBar: true,
+          showConfirmButton: false,
+          toast: true,
+          position: 'top-end',
+          width: 'auto',
+          padding: '1rem',
+          allowOutsideClick: false,
+          allowEscapeKey: false,
+          didOpen: () => {
+            Swal.showLoading();
+          },
+        });
+      }
+    } else if (Toast) {
+      Toast.show({
+        type: 'info',
+        text1: title,
+        text2: message || 'Aguarde...',
+        position: 'top',
+        visibilityTime: 15000,
+        autoHide: false, // Não fechar automaticamente
+        topOffset: Platform.OS === 'ios' ? 60 : 50,
+        text1Style: { fontSize: 14, fontWeight: '600' },
+        text2Style: { fontSize: 12 },
+      });
+    }
+  },
+
+  // 🚀 NOVO: Fechar toast de progresso
+  hide: () => {
+    if (Platform.OS === 'web') {
+      const Swal = getSwal();
+      if (Swal) {
+        Swal.close();
+      }
+    } else if (Toast) {
+      Toast.hide();
     }
   },
 };

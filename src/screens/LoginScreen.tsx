@@ -30,6 +30,7 @@ import { theme } from '../theme';
 import { localStorageService } from '../services/localStorageService';
 import { LocalEnsaio } from '../types/models';
 import { FontAwesome5 } from '@expo/vector-icons';
+import { showToast } from '../utils/toast';
 
 export const LoginScreen: React.FC = () => {
   const navigation = useNavigation<LoginScreenNavigationProp>();
@@ -75,7 +76,7 @@ export const LoginScreen: React.FC = () => {
 
   const handleLogin = async () => {
     if (!email || !password || !localEnsaio) {
-      Alert.alert('Campos obrigatórios', 'Preencha e-mail, senha e Local do Ensaio.');
+      showToast.error('Campos obrigatórios', 'Preencha e-mail, senha e Local do Ensaio.');
       return;
     }
 
@@ -88,7 +89,8 @@ export const LoginScreen: React.FC = () => {
 
       if (result.error) {
         const errorMessage = translateErrorMessage(result.error.message || 'Erro ao fazer login');
-        Alert.alert('Falha no login', errorMessage);
+        // 🚨 MELHORIA: Usar toast ao invés de Alert para mensagens mais elegantes
+        showToast.error('Credenciais inválidas', errorMessage);
       } else if (result.user) {
         // Salvar local do ensaio selecionado
         await localStorageService.setLocalEnsaio(localEnsaio);
@@ -98,7 +100,8 @@ export const LoginScreen: React.FC = () => {
       }
     } catch (error) {
       console.error('Erro no login:', error);
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Ocorreu um erro inesperado');
+      const errorMessage = error instanceof Error ? error.message : 'Ocorreu um erro inesperado';
+      showToast.error('Erro no login', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -108,18 +111,20 @@ export const LoginScreen: React.FC = () => {
     if (!message) return 'Ocorreu um erro ao realizar o login.';
     const msg = String(message);
 
-    if (msg.includes('Invalid login credentials')) return 'Credenciais de login inválidas.';
+    // 🚨 MELHORIA: Mensagens mais claras e amigáveis
+    if (msg.includes('Invalid login credentials') || msg.includes('Invalid email or password')) {
+      return 'E-mail ou senha incorretos. Verifique suas credenciais.';
+    }
     if (msg.includes('Email not confirmed'))
       return 'E-mail não confirmado. Verifique sua caixa de entrada.';
-    if (msg.includes('User not found')) return 'Usuário não encontrado.';
-    if (msg.includes('Invalid email or password')) return 'E-mail ou senha inválidos.';
+    if (msg.includes('User not found')) return 'Usuário não encontrado. Verifique o e-mail.';
     if (msg.includes('JWT expired')) return 'Sessão expirada. Faça login novamente.';
     if (msg.includes('rate limit') || msg.includes('Rate limit'))
-      return 'Muitas tentativas. Tente novamente em instantes.';
+      return 'Muitas tentativas. Aguarde alguns instantes e tente novamente.';
     if (msg.includes('Network') || msg.includes('Failed to fetch'))
-      return 'Falha de rede. Verifique sua conexão.';
+      return 'Falha de conexão. Verifique sua internet e tente novamente.';
     if (msg.includes('FetchError') || msg.includes('timeout'))
-      return 'Tempo de resposta esgotado. Tente novamente.';
+      return 'Tempo de resposta esgotado. Verifique sua conexão e tente novamente.';
 
     return msg;
   };
