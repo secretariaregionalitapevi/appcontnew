@@ -1445,8 +1445,38 @@ export const RegisterScreen: React.FC = () => {
         console.error('❌ [MODAL] result:', result);
         console.error('❌ [MODAL] result.success:', result?.success);
         console.error('❌ [MODAL] result.error:', result?.error);
+        
+        // 🚨 CORREÇÃO CRÍTICA: Se não foi enviado, tentar salvar na fila como fallback
+        console.log('🔄 [MODAL] Tentando salvar na fila como fallback (envio falhou)...');
+        try {
+          const registroFallback: RegistroPresenca = {
+            pessoa_id: `manual_${data.nome.toUpperCase()}`,
+            comum_id: `external_${data.comum.toUpperCase()}_${Date.now()}`,
+            cargo_id: cargoObj.id,
+            instrumento_id: data.instrumento || undefined,
+            classe_organista: data.classe || undefined,
+            local_ensaio: localEnsaio || 'Não definido',
+            data_hora_registro: getCurrentDateTimeISO(),
+            usuario_responsavel: nomeUsuario,
+            status_sincronizacao: 'pending',
+          };
+          
+          await supabaseDataService.saveRegistroToLocal(registroFallback);
+          console.log('✅ [MODAL] Registro salvo na fila como fallback');
+          showToast.warning('Salvo na fila', 'Erro ao enviar. Registro será enviado quando possível.');
+          
+          if (Platform.OS === 'web' && typeof window !== 'undefined') {
+            setTimeout(() => {
+              window.location.reload();
+            }, 2000);
+          }
+          return;
+        } catch (fallbackError) {
+          console.error('❌ [MODAL] Erro crítico ao salvar fallback:', fallbackError);
+        }
+        
         // Verificar se é erro de duplicata
-        if (result.error && result.error.includes('DUPLICATA:')) {
+        if (result && result.error && result.error.includes('DUPLICATA:')) {
           // Tratar duplicata (mesmo fluxo do handleSubmit)
           const errorPart = result.error.split('DUPLICATA:')[1]?.trim() || '';
           const parts = errorPart.split('|');
@@ -1485,10 +1515,45 @@ export const RegisterScreen: React.FC = () => {
           }
         } else {
           // Mostrar erro específico
-          const errorMessage = result.error || 'Erro ao enviar registro';
+          const errorMessage = result?.error || 'Erro ao enviar registro';
           console.error('❌ [MODAL] Erro ao enviar registro externo:', errorMessage);
-          showToast.error('Erro', errorMessage);
-          throw new Error(errorMessage);
+          
+          // 🚨 CORREÇÃO: Se já tentou salvar na fila acima e falhou, mostrar erro
+          // Se não tentou ainda, tentar agora
+          if (!result || result.success !== true) {
+            console.log('🔄 [MODAL] Tentando salvar na fila novamente (última tentativa)...');
+            try {
+              const registroFallback: RegistroPresenca = {
+                pessoa_id: `manual_${data.nome.toUpperCase()}`,
+                comum_id: `external_${data.comum.toUpperCase()}_${Date.now()}`,
+                cargo_id: cargoObj.id,
+                instrumento_id: data.instrumento || undefined,
+                classe_organista: data.classe || undefined,
+                local_ensaio: localEnsaio || 'Não definido',
+                data_hora_registro: getCurrentDateTimeISO(),
+                usuario_responsavel: nomeUsuario,
+                status_sincronizacao: 'pending',
+              };
+              
+              await supabaseDataService.saveRegistroToLocal(registroFallback);
+              console.log('✅ [MODAL] Registro salvo na fila (última tentativa)');
+              showToast.warning('Salvo na fila', 'Erro ao enviar. Registro será enviado quando possível.');
+              
+              if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                setTimeout(() => {
+                  window.location.reload();
+                }, 2000);
+              }
+              return;
+            } catch (finalError) {
+              console.error('❌ [MODAL] Erro crítico final:', finalError);
+              showToast.error('Erro', errorMessage);
+              throw new Error(errorMessage);
+            }
+          } else {
+            showToast.error('Erro', errorMessage);
+            throw new Error(errorMessage);
+          }
         }
       }
     } catch (error) {
