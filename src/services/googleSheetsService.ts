@@ -146,20 +146,26 @@ export const googleSheetsService = {
         }
 
         // Se não está OK e não é opaque, tentar ler erro
-        try {
-          const errorText = await response.text();
-          console.error('❌ [EXTERNAL] Erro HTTP ao enviar para Google Sheets:', response.status, errorText);
-          throw new Error(`HTTP ${response.status}: ${errorText || 'Erro desconhecido'}`);
-        } catch (readError: any) {
-          console.error('❌ [EXTERNAL] Erro ao ler resposta:', readError);
-          // 🚨 CORREÇÃO: Se não conseguiu ler erro, mas response não está OK, 
-          // pode ser no-cors - assumir sucesso (igual backupcont faz)
-          if (response.type === 'opaque' || response.status === 0) {
-            console.log('✅ [EXTERNAL] Google Sheets: Assumindo sucesso (no-cors ou status 0)');
-            return { success: true };
+        // 🚨 CORREÇÃO: Se já leu o corpo acima, não ler novamente
+        if (!responseBody) {
+          try {
+            responseBody = await response.text();
+            console.error('❌ [EXTERNAL] Erro HTTP ao enviar para Google Sheets:', response.status, responseBody);
+          } catch (readError: any) {
+            console.error('❌ [EXTERNAL] Erro ao ler resposta:', readError);
+            // 🚨 CORREÇÃO: Se não conseguiu ler erro, mas response não está OK, 
+            // pode ser no-cors - assumir sucesso (igual backupcont faz)
+            if (response.type === 'opaque' || response.status === 0) {
+              console.log('✅ [EXTERNAL] Google Sheets: Assumindo sucesso (no-cors ou status 0)');
+              return { success: true };
+            }
+            throw new Error(`HTTP ${response.status}: Erro ao processar resposta`);
           }
-          throw new Error(`HTTP ${response.status}: Erro ao processar resposta`);
         }
+        
+        // Se chegou aqui, response não está OK e temos o corpo da resposta
+        console.error('❌ [EXTERNAL] Erro HTTP ao enviar para Google Sheets:', response.status, responseBody);
+        throw new Error(`HTTP ${response.status}: ${responseBody || 'Erro desconhecido'}`);
       } catch (fetchError: any) {
         // 🚨 CORREÇÃO: Verificar se é timeout
         if (fetchError.message === 'Timeout' || fetchError.name === 'AbortError') {
