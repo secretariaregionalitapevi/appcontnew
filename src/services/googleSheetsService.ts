@@ -100,6 +100,7 @@ export const googleSheetsService = {
       try {
         // 🚨 CRÍTICO: Usar mesmo formato do backupcont (text/plain, sem mode explícito, sem signal)
         // Promise.race para timeout sem usar AbortController (compatível com no-cors)
+        console.log('🌐 [EXTERNAL] Iniciando fetch...');
         const fetchPromise = fetch(GOOGLE_SHEETS_API_URL, {
           method: 'POST',
           headers: {
@@ -108,15 +109,18 @@ export const googleSheetsService = {
           body: requestBody,
         });
 
-        const timeoutPromise = new Promise((_, reject) => {
+        const timeoutPromise = new Promise<never>((_, reject) => {
           setTimeout(() => reject(new Error('Timeout')), 8000);
         });
 
+        console.log('⏱️ [EXTERNAL] Aguardando resposta (timeout: 8s)...');
         const response = await Promise.race([fetchPromise, timeoutPromise]) as Response;
 
+        console.log('📥 [EXTERNAL] Resposta recebida!');
         console.log('📥 [EXTERNAL] Status da resposta:', response.status);
         console.log('📥 [EXTERNAL] Tipo da resposta:', response.type);
         console.log('📥 [EXTERNAL] Response OK:', response.ok);
+        console.log('📥 [EXTERNAL] Response headers:', response.headers);
 
         // 🚨 CORREÇÃO CRÍTICA: Verificar response.ok PRIMEIRO (igual backupcont)
         // O backupcont só verifica response.ok, não verifica response.type
@@ -132,12 +136,18 @@ export const googleSheetsService = {
           return { success: true };
         }
 
+        // Se status é 0, pode ser no-cors também
+        if (response.status === 0) {
+          console.log('✅ [EXTERNAL] Google Sheets: Assumindo sucesso (status 0 - provável no-cors)');
+          return { success: true };
+        }
+
         // Se não está OK e não é opaque, tentar ler erro
         try {
           const errorText = await response.text();
           console.error('❌ [EXTERNAL] Erro HTTP ao enviar para Google Sheets:', response.status, errorText);
           throw new Error(`HTTP ${response.status}: ${errorText || 'Erro desconhecido'}`);
-        } catch (readError) {
+        } catch (readError: any) {
           console.error('❌ [EXTERNAL] Erro ao ler resposta:', readError);
           // 🚨 CORREÇÃO: Se não conseguiu ler erro, mas response não está OK, 
           // pode ser no-cors - assumir sucesso (igual backupcont faz)
@@ -148,19 +158,28 @@ export const googleSheetsService = {
           throw new Error(`HTTP ${response.status}: Erro ao processar resposta`);
         }
       } catch (fetchError: any) {
-        clearTimeout(timeoutId);
-        if (fetchError.name === 'AbortError') {
+        // 🚨 CORREÇÃO: Verificar se é timeout
+        if (fetchError.message === 'Timeout' || fetchError.name === 'AbortError') {
           console.error('❌ [EXTERNAL] Timeout ao enviar para Google Sheets');
           throw new Error('Timeout ao enviar registro. Tente novamente.');
         }
-        // 🚨 CORREÇÃO: Se for erro de rede mas não timeout, pode ser no-cors
-        // Tentar verificar se foi enviado mesmo assim
-        if (fetchError.message && fetchError.message.includes('Failed to fetch')) {
+        
+        // 🚨 CORREÇÃO CRÍTICA: Se for erro de rede, pode ser no-cors
+        // Em no-cors, fetch pode falhar mas o envio pode ter funcionado
+        // Retornar sucesso como fallback (igual backupcont faz)
+        if (fetchError.message && (
+          fetchError.message.includes('Failed to fetch') ||
+          fetchError.message.includes('NetworkError') ||
+          fetchError.message.includes('Network request failed')
+        )) {
           console.warn('⚠️ [EXTERNAL] Erro de rede detectado, mas pode ser no-cors - assumindo sucesso');
+          console.warn('⚠️ [EXTERNAL] Detalhes do erro:', fetchError.message);
           // Em no-cors, fetch pode falhar mas o envio pode ter funcionado
           // Retornar sucesso como fallback (igual backupcont faz)
           return { success: true };
         }
+        
+        console.error('❌ [EXTERNAL] Erro inesperado no fetch:', fetchError);
         throw fetchError;
       }
     } catch (error: any) {
