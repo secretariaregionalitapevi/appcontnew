@@ -1547,6 +1547,9 @@ export const RegisterScreen: React.FC = () => {
           removeClippedSubviews={Platform.OS === 'android'}
           // 🚨 CRÍTICO: Permitir scroll mesmo quando há elementos com z-index alto
           overScrollMode={Platform.OS === 'android' ? 'always' : undefined}
+          // 🚨 CRÍTICO: Garantir que o conteúdo possa ser puxado para cima (pull-to-refresh)
+          contentInsetAdjustmentBehavior={Platform.OS === 'ios' ? 'automatic' : undefined}
+          automaticallyAdjustContentInsets={Platform.OS === 'ios' ? true : undefined}
           style={Platform.OS === 'web' 
             ? { 
                 position: 'relative' as const, 
@@ -1566,14 +1569,17 @@ export const RegisterScreen: React.FC = () => {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={onRefresh}
-                colors={[theme.colors.primary]}
-                tintColor={theme.colors.primary}
+                // 🚨 CRÍTICO: Cores específicas para cada plataforma
+                colors={Platform.OS === 'android' ? [theme.colors.primary] : undefined}
+                tintColor={Platform.OS === 'ios' ? theme.colors.primary : undefined}
+                // 🚨 CRÍTICO: Android precisa de offset para não sobrepor o header
                 progressViewOffset={Platform.OS === 'android' ? 20 : 0}
-                title="Puxe para atualizar e limpar campos"
-                titleColor={theme.colors.textSecondary}
-                progressBackgroundColor={theme.colors.surface}
+                // 🚨 CRÍTICO: Título apenas no Android (iOS não mostra)
+                title={Platform.OS === 'android' ? 'Puxe para atualizar e limpar campos' : undefined}
+                titleColor={Platform.OS === 'android' ? theme.colors.textSecondary : undefined}
+                progressBackgroundColor={Platform.OS === 'android' ? theme.colors.surface : undefined}
                 enabled={true}
-                // 🚨 CRÍTICO: Android precisa de configurações específicas
+                // 🚨 CRÍTICO: Android precisa de size default
                 size={Platform.OS === 'android' ? 'default' : undefined}
               />
             ) : undefined
@@ -1940,7 +1946,9 @@ const styles = StyleSheet.create({
       : {
           overflow: 'visible' as const,
           paddingHorizontal: theme.spacing.md, // Menos padding horizontal no mobile
-          paddingTop: theme.spacing.md, // Menos padding top no mobile
+          // 🚨 CRÍTICO: Não usar paddingTop no contentContainerStyle para permitir pull-to-refresh
+          // O padding será aplicado no primeiro elemento filho (card) em vez disso
+          paddingBottom: theme.spacing.xl * 2,
           // Garantir que há espaço suficiente para pull-to-refresh funcionar
           minHeight: '100%',
         }),
@@ -1960,6 +1968,11 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     borderRadius: theme.borderRadius.lg,
     marginBottom: theme.spacing.lg,
+    // 🚨 CRÍTICO: Adicionar marginTop no mobile para compensar remoção do paddingTop do scrollContent
+    // Isso permite que o pull-to-refresh funcione corretamente
+    ...(Platform.OS !== 'web' ? {
+      marginTop: theme.spacing.md,
+    } : {}),
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: Platform.OS === 'web' ? 0.1 : 0.15,
