@@ -413,7 +413,15 @@ export const RegisterScreen: React.FC = () => {
     
     try {
       setRefreshing(true);
-      console.log('🔄 Pull-to-refresh: recarregando dados...');
+      console.log('🔄 Pull-to-refresh: recarregando dados e limpando campos...');
+      
+      // 🚨 CRÍTICO: Limpar todos os campos do formulário primeiro
+      console.log('🧹 Limpando campos do formulário...');
+      setSelectedComum('');
+      setSelectedCargo('');
+      setSelectedInstrumento('');
+      setSelectedPessoa('');
+      setIsNomeManual(false);
       
       // Mostrar feedback visual imediato
       showToast.info('Atualizando...', 'Recarregando dados');
@@ -437,8 +445,8 @@ export const RegisterScreen: React.FC = () => {
       await refreshCount();
       
       // Feedback de sucesso
-      showToast.success('Atualizado!', 'Dados recarregados com sucesso');
-      console.log('✅ Pull-to-refresh concluído com sucesso');
+      showToast.success('Atualizado!', 'Dados recarregados e campos limpos');
+      console.log('✅ Pull-to-refresh concluído com sucesso - campos limpos');
     } catch (error) {
       console.error('❌ Erro ao atualizar:', error);
       showToast.error('Erro', 'Não foi possível atualizar os dados');
@@ -1521,7 +1529,7 @@ export const RegisterScreen: React.FC = () => {
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        keyboardVerticalOffset={0}
         enabled={Platform.OS === 'ios'}
       >
         <ScrollView
@@ -1531,10 +1539,14 @@ export const RegisterScreen: React.FC = () => {
           nestedScrollEnabled={true}
           showsVerticalScrollIndicator={true}
           scrollEnabled={true}
+          // 🚨 CRÍTICO: Habilitar bounces para permitir pull-to-refresh no mobile
           bounces={Platform.OS === 'ios' || Platform.OS === 'android'}
           alwaysBounceVertical={Platform.OS === 'ios'}
+          // 🚨 CRÍTICO: Garantir que o scroll funcione corretamente no mobile
           scrollEventThrottle={16}
           removeClippedSubviews={Platform.OS === 'android'}
+          // 🚨 CRÍTICO: Permitir scroll mesmo quando há elementos com z-index alto
+          overScrollMode={Platform.OS === 'android' ? 'always' : undefined}
           style={Platform.OS === 'web' 
             ? { 
                 position: 'relative' as const, 
@@ -1557,10 +1569,12 @@ export const RegisterScreen: React.FC = () => {
                 colors={[theme.colors.primary]}
                 tintColor={theme.colors.primary}
                 progressViewOffset={Platform.OS === 'android' ? 20 : 0}
-                title="Puxe para atualizar"
+                title="Puxe para atualizar e limpar campos"
                 titleColor={theme.colors.textSecondary}
                 progressBackgroundColor={theme.colors.surface}
                 enabled={true}
+                // 🚨 CRÍTICO: Garantir que funcione mesmo com scroll
+                style={{ flex: 1 }}
               />
             ) : undefined
           }
